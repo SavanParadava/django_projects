@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
+    "solo2.apps.Solo2Config",
     "autos.apps.AutosConfig",
     "hello.apps.HelloConfig",
     "home.apps.HomeConfig",
