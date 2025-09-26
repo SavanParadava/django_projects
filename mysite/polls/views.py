@@ -8,7 +8,7 @@ from .models import Choice, Question
 
 def owner(request: HttpRequest) -> HttpResponse:
     response = HttpResponse()
-    response.write("Hello, world. af7809fb is the polls index.")
+    response.write("Hello, world. ae152933 is the polls index.")
     return response
 
 def index(request):

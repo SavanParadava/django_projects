@@ -8,5 +8,5 @@ def cookie_session_view(request):
     request.session['num_visits'] = num_visits 
     if num_visits > 4 : request.session['num_visits']=1
     resp = HttpResponse('view count='+str(num_visits))
-    resp.set_cookie('dj4e_cookie', 'af7809fb', max_age=1000)
+    resp.set_cookie('dj4e_cookie', 'ae152933', max_age=1000)
     return resp

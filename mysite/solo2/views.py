@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect
 from django.views import View
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 # Create your views here.
-class StringReverse(View):
+class StringReverse(LoginRequiredMixin, View):
     def get(self,request):
         msg = request.session.get('msg',False)
         if msg: del(request.session['msg'])

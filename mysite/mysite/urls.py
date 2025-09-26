@@ -15,9 +15,16 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+import os
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.views.generic import TemplateView
+from django.views.static import serve
+
+# Up two folders to serve "site" content
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SITE_ROOT = os.path.join(BASE_DIR, 'site')
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -26,5 +33,11 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='home/main.html')),
     path('accounts/', include("django.contrib.auth.urls")),
     path('autos/', include('autos.urls')),
+    path('cats/', include('cats.urls')),
     path('solo2/', include('solo2.urls')),
+    re_path(r'^site/(?P<path>.*)$', serve,
+        {'document_root': SITE_ROOT, 'show_indexes': True},
+        name='site_path'
+    ),
+
 ]
