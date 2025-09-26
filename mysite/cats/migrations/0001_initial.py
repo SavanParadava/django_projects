@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="Make",
+            name="Breed",
             fields=[
                 (
                     "id",
@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                         max_length=200,
                         validators=[
                             django.core.validators.MinLengthValidator(
-                                2, "Make must be greater than 1 character"
+                                2, "Breed must be greater than 1 character"
                             )
                         ],
                     ),
@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name="Auto",
+            name="Cat",
             fields=[
                 (
                     "id",
@@ -60,12 +60,12 @@ class Migration(migrations.Migration):
                         ],
                     ),
                 ),
-                ("mileage", models.PositiveIntegerField()),
-                ("comments", models.TextField(max_length=300)),
+                ("weight", models.PositiveIntegerField()),
+                ("foods", models.TextField(max_length=300)),
                 (
-                    "make",
+                    "breed",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, to="autos.make"
+                        on_delete=django.db.models.deletion.CASCADE, to="cats.breed"
                     ),
                 ),
             ],
