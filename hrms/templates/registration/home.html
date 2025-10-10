@@ -1,0 +1,52 @@
+{% extends 'base.html' %} 
+
+{% block title %}Home{% endblock %} 
+
+{% block content %}
+  {% if user.is_authenticated and user.role == 'employee' %}
+    <div class="container py-4">
+      <h2 class="pb-2 border-bottom">
+        Welcome back, {{ user.first_name|default:user.username }}! 👋
+      </h2>
+      <p class="text-muted">Here are your available actions.</p>
+
+      <div class="row mt-4 justify-content-center">
+        <div class="col-lg-8">
+          <div class="card h-100 shadow-sm">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="bi bi-lightning-charge-fill me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+              <div class="list-group">
+                <a href="{% url 'portal:employee' %}" class="list-group-item list-group-item-action fs-5">
+                  <i class="bi bi-people-fill me-2"></i> My Profile
+                </a>
+                <a href="{% url 'portal:personal-attendance' %}" class="list-group-item list-group-item-action fs-5">
+                  <i class="bi bi-calendar-check-fill me-2"></i> My Attendance Report
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  {% else %}
+    <div class="container col-xxl-8 px-4 py-5">
+      <div class="row flex-lg-row-reverse align-items-center g-5 py-5">
+        <div class="col-lg-6">
+            <h1 class="display-5 fw-bold lh-1 mb-3">
+              Human Resource Management System
+            </h1>
+            <p class="lead">Welcome to our company portal. Access your profile, manage attendance, and stay connected with your team. Please log in to continue.</p>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg px-4 me-md-2">Login Now</a>
+            </div>
+        </div>
+        <div class="col-10 col-sm-8 col-lg-6">
+            
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
