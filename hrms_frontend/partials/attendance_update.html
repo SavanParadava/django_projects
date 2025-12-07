@@ -1,0 +1,45 @@
+<!-- Converted from attendance_update.html -->
+
+<!-- Message placeholder -->
+<div id="message-container"></div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">
+      <i class="bi bi-calendar-check me-2"></i>Attendance for: <span id="attendance-date">...</span>
+    </h5>
+    <button id="mark-all-present" type="button" class="btn btn-light btn-sm">
+      <i class="bi bi-check2-all me-1"></i> Mark all as Present
+    </button>
+  </div>
+
+  <div class="card-body">
+    <form id="attendance-form">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Employee ID</th>
+              <th scope="col">Employee Name</th>
+              <th scope="col" style="width: 200px;">Status</th>
+            </tr>
+          </thead>
+          <!-- Attendance rows will be injected here by app.js -->
+          <tbody id="attendance-tbody">
+            <!-- e.g., <tr>...</tr> -->
+          </tbody>
+        </table>
+      </div>
+      
+      <hr>
+      <div class="text-end">
+        <button type="button" id="nav-back-to-hr" class="btn btn-secondary">
+            <i class="bi bi-arrow-left-circle me-1"></i> Cancel & Go Back
+        </button>
+        <button type="submit" class="btn btn-success">
+          <i class="bi bi-save me-1"></i> Save Attendance
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

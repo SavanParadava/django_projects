@@ -1,5 +1,4 @@
 from django.contrib.auth.views import LoginView
-from django.contrib.auth.mixins import AccessMixin
 from django.urls import reverse_lazy
 
 from .forms import ModifiedAuthenticationForm
@@ -21,22 +20,3 @@ class MyLoginView(LoginView):
         if user.role == "hr":
             return reverse_lazy("portal:hr")
         return reverse_lazy("portal:employee")
-
-class HRLoginRequiredMixin(AccessMixin):
-    """Verify that the current user is authenticated."""
-
-    def dispatch(self, request, *args, **kwargs):
-        """Checks if user is HR person"""
-        if not ( request.user.is_authenticated and request.user.role == 'hr' ):
-            return self.handle_no_permission()
-        return super().dispatch(request, *args, **kwargs)
-
-class EmployeeLoginRequiredMixin(AccessMixin):
-    """Verify that the current user is authenticated."""
-
-    def dispatch(self, request, *args, **kwargs):
-        """Checks if user is Employee"""
-        if not ( request.user.is_authenticated and request.user.role == 'employee' ):
-            print("here login")
-            return self.handle_no_permission()
-        return super().dispatch(request, *args, **kwargs)

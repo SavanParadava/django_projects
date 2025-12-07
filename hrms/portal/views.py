@@ -1,24 +1,40 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django.views.generic import DetailView
-from django.views.generic.base import TemplateView
-from django.views.generic.edit import CreateView, DeleteView, UpdateView, FormView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic.edit import CreateView, DeleteView, UpdateView
+from django.contrib.auth.mixins import AccessMixin
 from django.contrib.auth import logout
 from django.contrib import messages
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.urls import reverse_lazy
-from django.contrib.auth.base_user import BaseUserManager
 from django.core.mail import send_mail
 from django.utils import timezone
 
-from accounts.views import EmployeeLoginRequiredMixin, HRLoginRequiredMixin
 from .models import Employee, Attendance
 from .forms import AttendanceFormSet, EmployeePhotoForm, EmployeeForm
 from accounts.models import CustomUser
 from .utils import generate_password
 from datetime import timedelta
+
+class HRLoginRequiredMixin(AccessMixin):
+    """Verify that the current user is authenticated."""
+
+    def dispatch(self, request, *args, **kwargs):
+        """Checks if user is HR person"""
+        if not ( request.user.is_authenticated and request.user.role == 'hr' ):
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
+
+class EmployeeLoginRequiredMixin(AccessMixin):
+    """Verify that the current user is authenticated."""
+
+    def dispatch(self, request, *args, **kwargs):
+        """Checks if user is Employee"""
+        if not ( request.user.is_authenticated and request.user.role == 'employee' ):
+            print("here login")
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
 
 class EmployeeCreateView(HRLoginRequiredMixin,CreateView):
     # model = Employee
@@ -84,7 +100,6 @@ class EmployeePhotoUpdateView(EmployeeLoginRequiredMixin, UpdateView):
     success_url = reverse_lazy("portal:employee")
 
     def get_object(self):
-        print("here get")
         return Employee.objects.get(user=self.request.user)
 
 class AttendanceView(HRLoginRequiredMixin, View):
@@ -161,7 +176,7 @@ class PersonalAttendance(EmployeeLoginRequiredMixin,DetailView):
 
         records = Attendance.objects.filter(employee=employee)
 
-        present_count = records.filter(status = 'present').count()
+        present_count = records.filter(status='present').count()
         absent_count = records.filter(status='absent').count()
         leave_count = records.filter(status='leave').count()
         total_days = records.count()

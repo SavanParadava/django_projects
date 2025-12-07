@@ -26,6 +26,14 @@ class CustomUser(AbstractUser):
             self.save()
             return True
         return False
+    
+    def increment_failed_count(self):
+        self.failed_attempts += 1
+        self.save()
+    
+    def reset_failed_count(self):
+        self.failed_attempts = 0
+        self.save()
 
     def save(self, *args, **kwargs):
         if self.is_superuser:
