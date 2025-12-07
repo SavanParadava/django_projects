@@ -1,0 +1,102 @@
+{% extends 'base.html' %} 
+
+{% block title %}Attendance for {{ employee.first_name }} {{ employee.last_name }}{% endblock %} 
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <i class="bi bi-person-check-fill me-2"></i>
+          Attendance Report for: {{ employee.first_name }} {{ employee.last_name }}
+        </h5>
+        <span class="badge bg-light text-primary">Employee ID: {{ employee.id|stringformat:"05d" }}</span>
+      </div>
+      
+      <div class="card-body">
+        <!-- ## Attendance Summary Section ## -->
+        <h5 class="mb-3">Performance Summary</h5>
+        <div class="row text-center mb-4">
+          <div class="col-md-3 col-6 mb-3 mb-md-0">
+            <div class="p-3 bg-light rounded">
+              <h6 class="text-muted">Total Days</h6>
+              <strong class="fs-4">{{ total_days }}</strong>
+            </div>
+          </div>
+          <div class="col-md-3 col-6 mb-3 mb-md-0">
+            <div class="p-3 bg-success-subtle rounded">
+              <h6 class="text-success">Present</h6>
+              <strong class="fs-4">{{ present_count }}</strong>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="p-3 bg-danger-subtle rounded">
+              <h6 class="text-danger">Absent</h6>
+              <strong class="fs-4">{{ absent_count }}</strong>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="p-3 bg-warning-subtle rounded">
+              <h6 class="text-warning">On Leave</h6>
+              <strong class="fs-4">{{ leave_count }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendance Percentage Bar -->
+        <label for="attendance-progress" class="form-label">Attendance Rate: {{ attendance_percentage|floatformat:1 }}%</label>
+        <div class="progress mb-4" id="attendance-progress" style="height: 20px;">
+          <div class="progress-bar bg-success" role="progressbar" style="width: {{ attendance_percentage }}%;" aria-valuenow="{{ attendance_percentage }}" aria-valuemin="0" aria-valuemax="100">
+            <strong>{{ attendance_percentage|floatformat:1 }}%</strong>
+          </div>
+        </div>
+        
+        <hr>
+
+        <!-- ## Detailed History Table ## -->
+        <h5 class="mb-3">Detailed History</h5>
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-striped table-hover">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Django's reverse relationship allows us to get all attendance records -->
+              {% for record in employee.attendance_set.all|dictsortreversed:"date" %}
+                <tr>
+                  <td>{{ record.date|date:"F d, Y" }}</td>
+                  <td>
+                    {% if record.status == 'present' %}
+                      <span class="badge bg-success">Present</span>
+                    {% elif record.status == 'absent' %}
+                      <span class="badge bg-danger">Absent</span>
+                    {% elif record.status == 'leave' %}
+                      <span class="badge bg-warning text-dark">On Leave</span>
+                    {% else %}
+                      <span class="badge bg-secondary">N/A</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="2" class="text-center text-muted">No attendance records found.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card-footer text-end">
+        <a href="{% url 'portal:employee' %}" class="btn btn-secondary">
+          <i class="bi bi-arrow-left-circle me-1"></i> Back to Employee List
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends 'base.html' %} 
+
+{% block title %}Update Attendance{% endblock %} 
+
+{% block content %}
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-calendar-check me-2"></i>Attendance for: {{ today_date|date:"F d, Y" }}
+      </h5>
+      <button id="mark-all-present" type="button" class="btn btn-light btn-sm">
+        <i class="bi bi-check2-all me-1"></i> Mark all as Present
+      </button>
+    </div>
+
+    <div class="card-body">
+      <form method="post">
+        {% csrf_token %}
+        {{ formset.management_form }}
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle"> {# Changed table-striped to table-hover for better color display #}
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Employee ID</th>
+                <th scope="col">Employee Name</th>
+                <th scope="col" style="width: 200px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for form, employee in forms_with_employees %}
+                <tr>
+                  <td>
+                    {{ employee.id }}
+                    {{ form.employee }}
+                  </td>
+                  <td>
+                    {{ employee }}
+                  </td>
+                  <td>
+                    {{ form.status }}
+                    {% if form.status.errors %}
+                      <div class="text-danger mt-1">
+                        <small>{{ form.status.errors|striptags }}</small>
+                      </div>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        
+        <hr>
+        <div class="text-end">
+          <a href="{% url 'portal:hr' %}" class="btn btn-secondary">
+              <i class="bi bi-arrow-left-circle me-1"></i> Cancel & Go Back
+          </a>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-save me-1"></i> Save Attendance
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const statusSelects = document.querySelectorAll('select[name$="-status"]');
+
+      // Function to update the row color based on the dropdown value
+      function updateRowColor(selectElement) {
+        const selectedValue = selectElement.value.toLowerCase();
+        const row = selectElement.closest('tr');
+
+        // Remove any existing color classes first
+        row.classList.remove('table-success', 'table-danger', 'table-warning');
+
+        // Add the new class based on the selected status
+        if (selectedValue === 'present') {
+          row.classList.add('table-success'); // 🟢 Green for Present
+        } else if (selectedValue === 'absent') {
+          row.classList.add('table-danger');  // 🔴 Red for Absent
+        } else if (selectedValue === 'leave') {
+          row.classList.add('table-warning'); // 🟡 Yellow for On Leave
+        }
+      }
+
+      // 1. Color rows on initial page load and add event listeners
+      statusSelects.forEach(function(select) {
+        updateRowColor(select); // Color on load
+        select.addEventListener('change', function() {
+          updateRowColor(this); // Color when changed
+        });
+      });
+
+      // 2. Update the "Mark all as Present" button to trigger the color change
+      document.getElementById('mark-all-present').addEventListener('click', function() {
+        statusSelects.forEach(function(select) {
+          select.value = 'present'; 
+          // Manually trigger the 'change' event to update the row color
+          select.dispatchEvent(new Event('change'));
+        });
+      });
+    });
+  </script>
+{% endblock %}

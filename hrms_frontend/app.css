@@ -1,0 +1,4 @@
+/* Helper class to hide elements */
+.hidden {
+  display: none !important;
+}
