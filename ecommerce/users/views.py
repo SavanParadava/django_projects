@@ -12,7 +12,6 @@ from .serializers import CustomUserSerializer, ResetPasswordRequestSerializer, R
 from .utils import generate_otp, send_otp_email
 from .models import CustomUser
 from .models import PasswordReset
-import os
 
 
 class VerifyOTP(APIView):
@@ -76,15 +75,17 @@ class RequestPasswordReset(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         email = request.data['email']
         user = CustomUser.objects.filter(email__iexact=email).first()
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        redirect_url = request.data.get('redirect_url', '')
 
         if user:
             token_generator = PasswordResetTokenGenerator()
             token = token_generator.make_token(user) 
             reset = PasswordReset(email=email, token=token)
             reset.save()
-
-            reset_url = f"{os.environ['PASSWORD_RESET_BASE_URL']}/{token}"
-
+            
+            reset_url = f"{redirect_url}?token={token}"
             send_otp_email(user.email, reset_url)
 
             return Response({'success': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
@@ -117,7 +118,8 @@ class ResetPassword(generics.GenericAPIView):
             user.set_password(request.data['new_password'])
             user.save()
             
-            reset_obj.delete()
+            PasswordReset.objects.filter(email=reset_obj.email).delete()
+            # reset_obj.delete()
             
             return Response({'success':'Password updated'})
         else: 

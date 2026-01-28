@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Retailer Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="utils.js"></script>
+</head>
+<body>
+    <nav>
+        <h1>Retailer Dashboard</h1>
+        <div>
+            <button onclick="window.location.href='index.html'">Back to Store</button>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="center-wrapper" style="margin-top: 50px;">
+        <div class="form-box" style="max-width: 600px;">
+            <h2>Add New Product</h2>
+            <form id="addProductForm">
+                <div class="form-group">
+                    <label>Product Name</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Price ($)</label>
+                    <input type="number" id="price" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Stock Quantity</label>
+                    <input type="number" id="stock" required>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="catId" required>
+                        <option value="" disabled selected>Select Category</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-block">Add Product</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('accessToken');
+        if (!token) window.location.href = 'login.html';
+
+        async function loadCategories() {
+	    try {
+		// Use authFetch instead of fetch
+		const response = await authFetch(`${API_BASE}/api/store/categories/`);
+		if (response.ok) {
+		    const data = await response.json();
+		    const categories = data.results || data;
+		    const select = document.getElementById('catId');
+		    categories.forEach(cat => {
+		        const option = document.createElement('option');
+		        option.value = cat.id;
+		        option.textContent = cat.name;
+		        select.appendChild(option);
+		    });
+		}
+	    } catch (error) {
+		console.error("Failed to load categories", error);
+	    }
+	}
+
+	document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+	    e.preventDefault();
+	    
+	    const data = {
+		name: document.getElementById('name').value,
+		price: parseFloat(document.getElementById('price').value),
+		amount_in_stock: parseInt(document.getElementById('stock').value),
+		category_id: parseInt(document.getElementById('catId').value),
+	    };
+
+	    try {
+		// Use authFetch to automatically attach the token
+		const res = await authFetch(`${API_BASE}/api/store/products/`, {
+		    method: 'POST',
+		    headers: { 'Content-Type': 'application/json' },
+		    body: JSON.stringify(data)
+		});
+		
+		if (res.ok) {
+		    showToast("Product Added!","success");
+		    window.location.href = 'index.html';
+		} else {
+		    const err = await res.json();
+		    showToast("Error: " + JSON.stringify(err),"error");
+		}
+	    } catch (e) { console.error(e); }
+	});
+
+	loadCategories();
+    </script>
+</body>
+</html>

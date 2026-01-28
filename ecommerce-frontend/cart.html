@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Cart</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="utils.js"></script>
+</head>
+<body>
+    <nav>
+        <h1>Shopping Cart</h1>
+        <div>
+            <button onclick="window.location.href='index.html'">Continue Shopping</button>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+    <div class="center-wrapper" style="align-items: flex-start; margin-top: 50px;">
+        <div style="width: 100%; max-width: 800px;">
+            <h2>Your Cart</h2>
+            <div id="cartContainer">Loading...</div>
+            <div id="totalSection" style="text-align:right; margin-top:20px; display:none; background:white; padding:20px; border-radius:8px;">
+                <h3>Total: $<span id="grandTotal">0.00</span></h3>
+                <button class="btn-block" style="background:var(--success); max-width:200px; display:inline-block;" onclick="processPayment()">Make Payment</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const token = localStorage.getItem('accessToken');
+        if (!token) window.location.href = 'login.html';
+
+        async function fetchCart() {
+            const res = await authFetch(`${API_BASE}/api/store/cart/`);
+            const data = await res.json();
+            const items = data.results || data;
+            
+            const container = document.getElementById('cartContainer');
+            container.innerHTML = '';
+            let total = 0;
+
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p>Cart is empty.</p>';
+                document.getElementById('totalSection').style.display = 'none';
+                return;
+            }
+
+            items.forEach(item => {
+                const itemTotal = item.quantity * item.product.price;
+                total += itemTotal;
+                
+                // Get Product ID for updates
+                const pid = item.product.id; 
+                // Handle missing image
+                const img = item.product.image || 'https://via.placeholder.com/50';
+
+                const div = document.createElement('div');
+                div.className = 'product-card';
+                // Override card styles for list view
+                div.style.flexDirection = 'row';
+                div.style.justifyContent = 'space-between';
+                div.style.alignItems = 'center';
+                div.style.marginBottom = '10px';
+
+                div.innerHTML = `
+                    <div style="display:flex; gap:15px; align-items:center;">
+                        <img src="${img}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
+                        <div>
+                            <h3 style="margin:0;">${item.product.name}</h3>
+                            <p class="price" style="font-size:1rem; margin:5px 0;">$${item.product.price}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; gap:20px;">
+                        <div class="qty-controls">
+                            <button class="qty-btn" onclick="updateQuantity(${pid}, ${item.quantity - 1})">-</button>
+                            <span style="font-weight:bold; width:20px; text-align:center;">${item.quantity}</span>
+                            <button class="qty-btn" onclick="updateQuantity(${pid}, ${item.quantity + 1})">+</button>
+                        </div>
+                        <b style="color:var(--success); min-width:80px; text-align:right;">$${itemTotal.toFixed(2)}</b>
+                        <button onclick="removeItem(${pid})" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Remove</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            document.getElementById('grandTotal').textContent = total.toFixed(2);
+            document.getElementById('totalSection').style.display = 'block';
+        }
+
+        async function updateQuantity(pid, newQty) {
+            if (newQty < 1) {
+                // if(confirm("Remove item from cart?")) {
+                //     removeItem(pid);
+                // }
+                const confirmed = await showConfirm("Remove item from cart?")
+                if(confirmed) removeItem(pid);
+                return;
+            }
+
+            const res = await authFetch(`${API_BASE}/api/store/cart/${pid}/`, { 
+                method: 'PATCH', 
+                headers: {'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity: newQty })
+            });
+
+            if (res.ok) {
+                fetchCart(); // Refresh UI
+            } else {
+                showToast("Failed to update quantity.","error");
+            }
+        }
+
+        async function removeItem(pid) {
+            await fetch(`${API_BASE}/api/store/cart/${pid}/`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            fetchCart();
+        }
+
+        async function processPayment() {
+            showToast("Payment successful. Placing orders...","success");            
+            // Get current items
+            const res = await authFetch(`${API_BASE}/api/store/cart/`);
+            const data = await res.json();
+            const items = data.results || data;
+            
+            // Convert to orders
+            for (const item of items) {
+                await fetch(`${API_BASE}/api/store/orders/`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_id: item.product.id, quantity: item.quantity, total_amount: item.product.price * item.quantity })
+                });
+                // Remove from cart
+                await fetch(`${API_BASE}/api/store/cart/${item.product.id}/`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            }
+            window.location.href = 'orders.html';
+        }
+        fetchCart();
+    </script>
+</body>
+</html>

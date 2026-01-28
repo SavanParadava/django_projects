@@ -6,7 +6,7 @@ from datetime import timedelta
 from users.models import IpCount
 
 token_add_interval = 20  # seconds
-token_bonus = 10
+token_bonus = 60
 token_reset_interval = 120  # seconds
 
 
