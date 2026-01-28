@@ -15,8 +15,13 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 1000
 
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    authentication_classes = [JWTAuthentication]
+
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
+    queryset = Product.objects.all().order_by('-id')
     serializer_class = ProductSerializer
     authentication_classes = [JWTAuthentication]
     pagination_class = StandardResultsSetPagination
@@ -27,53 +32,46 @@ class ProductViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticatedOrReadOnly]
         return [permission() for permission in permission_classes]
+    
+    def perform_create(self, serializer):
+        store_user = get_object_or_404(StoreUser, original_user_id=self.request.user.id)
+        serializer.save(retailer=store_user)
 
     @action(detail=False, methods=['get'])
     def filter_products(self, request):
-        num = request.query_params.get('num',10)
+        num = request.query_params.get('num', 9)
+        self.paginator.page_size = int(num)
         max_price = request.query_params.get('max_price','')
         min_price = request.query_params.get('min_price','')
         category_id = request.query_params.get('category_id',None)
         retailer_id = request.query_params.get('retailer_id',None)
+        search_text = request.query_params.get('search',None)
+        sort_by_price = request.query_params.get('sort_by_price',None)
 
         try:
             products = self.get_queryset()
+            
             if max_price:
-                products = products.filter(price__lte=int(max_price), is_active=True)
+                products = products.filter(price__lte=float(max_price), is_active=True)
             if min_price:
-                products = products.filter(price__gte=int(min_price), is_active=True)
+                products = products.filter(price__gte=float(min_price), is_active=True)
             if category_id:
-                products = products.filter(category=category_id)
+                products = products.filter(category=category_id, is_active=True)
+            if search_text:
+                products = products.filter(name__icontains=search_text, is_active=True)
             if retailer_id:
-                products = products.filter(retailer=retailer_id)
-            products = products.order_by('-price')[:int(num)]
-
+                products = products.filter(retailer=retailer_id, is_active=True)
+            if sort_by_price=="1":
+                products = products.order_by('price')
+            if sort_by_price=="-1":
+                products = products.order_by('-price')
+            
             page = self.paginate_queryset(products)
             serializer = ProductSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)                
+            response = self.get_paginated_response(serializer.data)
+            response.data['total_active_products'] = Product.objects.filter(is_active=True).count()            
+            return response
             
-        except Exception as e:
-            return Response({
-                'success': False,
-                'error': str(e)
-            },
-            status=status.HTTP_400_BAD_REQUEST)
-        
-    @action(detail=False, methods=['post'])
-    def search_product(self,request):
-        data = request.data
-        search_text = data.get('search_text')
-        try:
-            products = Product.objects.filter(name__icontains=search_text, is_active=True)
-            
-            serializer = ProductSerializer(products, many=True)
-            return Response(
-            {
-                'success': True,
-                'count': products.count(),
-                'products': serializer.data
-            },
-            status=status.HTTP_200_OK)
         except Exception as e:
             return Response({
                 'success': False,
@@ -143,7 +141,7 @@ class EditReviewViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     lookup_field = 'product_id'
 
-    http_method_names = ['post', 'delete', 'patch']
+    http_method_names = ['get', 'post', 'delete', 'patch']
 
     def get_queryset(self):
         return Review.objects.filter(user_id=self.request.user.id)
@@ -157,5 +155,4 @@ class OrderViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete']
 
     def get_queryset(self):
-        return Order.objects.filter(user_id=self.request.user.id)
-    
+        return Order.objects.filter(user_id=self.request.user.id).order_by('-created_at')

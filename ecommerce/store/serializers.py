@@ -11,26 +11,28 @@ class StoreUserSerializer(serializers.ModelSerializer):
         model = StoreUser
         fields = ['user_id', 'email', 'role']
 
-class ProductSerializer(serializers.ModelSerializer):
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(),
-        source='category',
-        required=True)
-    
-    retailer_id = serializers.PrimaryKeyRelatedField(
-        queryset=StoreUser.objects.all(),
-        source='retailer',
-        required=True)
-
-    
-    class Meta:
-        model = Product
-        fields = ['id', 'name', 'price', 'amount_in_stock', 'category_id', 'retailer_id']
-
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['name']
+        fields = ['id', 'name']
+
+class ProductSerializer(serializers.ModelSerializer):
+
+    category = CategorySerializer(read_only=True)
+
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        source='category',
+        write_only=True,
+        required=True)
+    
+    retailer_id = serializers.PrimaryKeyRelatedField(
+        source='retailer',
+        read_only=True)
+    
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'price', 'amount_in_stock', 'category_id', 'category', 'retailer_id', 'image']
 
 class OrderSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
@@ -43,7 +45,7 @@ class OrderSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['product_id', 'user', 'product', 'quantity', 'total_amount']
+        fields = ['product_id', 'user', 'product', 'quantity', 'total_amount', 'created_at']
     
     def validate_user(self, value):
         return get_object_or_404(StoreUser,original_user_id=value.id)
@@ -94,12 +96,13 @@ class ProductReviewsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = ['id', 'user', 'product_id', 'rating', 'comment']
+        fields = ['id', 'user', 'product_id', 'rating', 'comment', 'created_at']
 
-class EditReviewSerializer(serializers.ModelSerializer):    
+class EditReviewSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(),
         source='product',
+        # read_only=True
     )
     
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())

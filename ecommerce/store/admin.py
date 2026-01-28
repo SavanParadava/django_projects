@@ -4,18 +4,18 @@ from .models import *
 class StoreUserAdmin(admin.ModelAdmin):
     list_display = [field.name for field in StoreUser._meta.fields]
     search_fields = ("email", "username")
-    ordering = ("email",)
+    ordering = ("id",)
     # list_filter = ("is_verified",)
 
 class CategoryAdmin(admin.ModelAdmin):
     list_display = [field.name for field in Category._meta.fields]
     search_fields = ("name",)
-    ordering = ("name",)
+    ordering = ("id",)
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = [field.name for field in Product._meta.fields]
     search_fields = ("name", "category__name", "retailer")
-    ordering = ("price",)
+    ordering = ("category__name",)
     list_filter = ("category",)
 
 class OrderAdmin(admin.ModelAdmin):

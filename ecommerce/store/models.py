@@ -25,6 +25,8 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
+    image = models.ImageField(upload_to='products/', blank=True, null=True)
+
     class Meta:
         unique_together = ('name', 'price', 'category', 'retailer')
 

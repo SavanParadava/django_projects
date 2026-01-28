@@ -9,5 +9,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise AuthenticationFailed("user is not verified")
 
         token = super().get_token(user)
+        token['role'] = user.role
+        token['email'] = user.email
 
         return token

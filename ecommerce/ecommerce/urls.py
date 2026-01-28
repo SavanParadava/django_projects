@@ -21,11 +21,15 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+
+from django.conf import settings
+from django.conf.urls.static import static
 from .views import MyTokenObtainPairView
 from rest_framework.routers import DefaultRouter
 from store.views import *
 
 router = DefaultRouter()
+router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'products', ProductViewSet, basename='product')
 router.register(r'cart',CartViewSet, basename='cart')
 router.register(r'liked_product',LikedProductViewSet, basename='liked-product')
@@ -43,4 +47,5 @@ urlpatterns = [
 ]
 
 
-# urlpatterns += router.urls
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
