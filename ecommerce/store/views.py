@@ -6,6 +6,9 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.exceptions import ValidationError
 
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+
 from .permissions import *
 from .models import *
 from .serializers import *
@@ -63,8 +66,10 @@ class ProductViewSet(viewsets.ModelViewSet):
                 products = products.filter(retailer=retailer_id, is_active=True)
             if sort_by_price=="1":
                 products = products.order_by('price')
-            if sort_by_price=="-1":
+            elif sort_by_price=="-1":
                 products = products.order_by('-price')
+            else:
+                products = products.order_by('-created_at')
             
             page = self.paginate_queryset(products)
             serializer = ProductSerializer(page, many=True)
@@ -78,7 +83,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 'error': str(e)
             },
             status=status.HTTP_400_BAD_REQUEST)
-    
+
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartSerializer
     authentication_classes = [JWTAuthentication]
@@ -104,6 +109,61 @@ class CartViewSet(viewsets.ModelViewSet):
             raise ValidationError({"quantity": "Quantity cannot be zero or negative."})
         else:
             serializer.save()
+    
+    @action(detail=False, methods=['post'])
+    def checkout(self, request):
+        store_user = get_object_or_404(StoreUser, original_user_id=request.user.id)
+
+        address_id = request.data.get('address_id')
+        if not address_id:
+            return Response({"detail": "Address ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        address = get_object_or_404(Address, id=address_id, user=store_user)
+        
+        cart_items = Cart.objects.filter(user=store_user)
+        
+        if not cart_items.exists():
+            return Response(
+                {"detail": "Cart is empty."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            with transaction.atomic():
+                for item in cart_items:
+                    product = Product.objects.select_for_update().get(pk=item.product.pk)
+                    
+                    if product.amount_in_stock < item.quantity:
+                        raise ValidationError(
+                            f"Insufficient stock for '{product.name}'. Available: {product.amount_in_stock}, Requested: {item.quantity}"
+                        )
+                for item in cart_items:
+                    product = Product.objects.select_for_update().get(pk=item.product.pk)
+                    
+                    if product.amount_in_stock < item.quantity:
+                        raise ValidationError(
+                            f"Insufficient stock for '{product.name}'. Available: {product.amount_in_stock}, Requested: {item.quantity}"
+                        )
+                    
+                    product.amount_in_stock -= item.quantity
+                    product.save()
+                    
+                    Order.objects.create(
+                        user=store_user,
+                        product=product,
+                        quantity=item.quantity,
+                        total_amount=product.price * item.quantity,
+                        shipping_address=address
+                    )
+                
+                cart_items.delete()
+                
+            return Response({"detail": "Checkout successful."}, status=status.HTTP_201_CREATED)
+            
+        except ValidationError as e:
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 class LikedProductViewSet(viewsets.ModelViewSet):
     queryset = LikedProduct.objects.all()
@@ -156,3 +216,16 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Order.objects.filter(user_id=self.request.user.id).order_by('-created_at')
+
+class AddressViewSet(viewsets.ModelViewSet):
+    serializer_class = AddressSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsCustomer]
+
+    def get_queryset(self):
+        return Address.objects.filter(user_id=self.request.user.id)
+
+    def perform_create(self, serializer):
+        if serializer.validated_data.get('is_default', False):
+            Address.objects.filter(user_id=self.request.user.id).update(is_default=False)
+        serializer.save()

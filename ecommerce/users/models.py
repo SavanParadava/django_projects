@@ -5,8 +5,7 @@ from users.managers import CustomUserManager
 from django.utils.translation import gettext_lazy as _
 
 class CustomUser(AbstractUser):
-    username = None
-    email = models.EmailField(_("email address"), unique=True)
+    email = models.EmailField(_("email address"), unique=True, null=True)
     is_verified = models.BooleanField(default=False)
     otp = models.CharField(max_length=6, blank=True, null=True)
     ROLE_CHOICES = [
@@ -15,16 +14,15 @@ class CustomUser(AbstractUser):
         ('CUSTOMER', 'customer'),
     ]
 
-    role = models.CharField(max_length=20,
-                            choices=ROLE_CHOICES,default='CUSTOMER')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CUSTOMER')
 
-    USERNAME_FIELD = "email"
+    USERNAME_FIELD = "username"
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
 
     def __str__(self):
-        return self.email
+        return self.username
 
 class PasswordReset(models.Model):
     email = models.EmailField()
@@ -35,3 +33,5 @@ class IpCount(models.Model):
     ip_address = models.GenericIPAddressField(unique=True)
     first_request_time = models.DateTimeField(auto_now_add=True)
     tokens_spent = models.IntegerField(default=1)
+
+

@@ -1,4 +1,4 @@
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = 'https://777875462ea3.ngrok-free.app';
 
 // Helper to parse JWT tokens (to get role/user_id)
 function parseJwt(token) {
@@ -61,6 +61,8 @@ async function authFetch(url, options = {}) {
     
     // Set default headers
     options.headers = options.headers || {};
+    options.headers['ngrok-skip-browser-warning'] = 'true';
+
     if (token) {
         options.headers['Authorization'] = `Bearer ${token}`;
     }

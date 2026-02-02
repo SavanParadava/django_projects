@@ -4,90 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Store Home</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="utils.js"></script>
-    <style>
-        .nav-links a.active {
-            text-decoration: underline;
-            color: #fff;
-            font-weight: bold;
-        }
-        /* Highlight the user's own review */
-        .my-review {
-            background-color: #f0f8ff; /* Light blue background */
-            border: 1px solid #3498db;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-        .my-review-badge {
-            background-color: #3498db;
-            color: white;
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 8px;
-            vertical-align: middle;
-        }
-    </style>
+    <script src="utils.js" defer></script>
+    <script src="store.js" defer></script>
 </head>
 <body>
-    <nav>
-        <h1>My Ecommerce Store</h1>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>My Ecommerce</h1>
+        </div>
         
         <div class="nav-links" id="navCategoryLinks">
-            <a href="#" class="active" data-cat-id="" onclick="handleHeaderFilter(event, '')">All</a>
-        </div>
+            <a href="#" class="active" data-cat-id="" id="nav-all">All</a>
+            </div>
 
-        <div>
-	    <button id="retailerLink" style="display:none; background-color:#e67e22;" onclick="window.location.href='retailer.html'">Retailer Dashboard</button>
-	    
-	    <button onclick="window.location.href='cart.html'">Cart</button>
-	    <button onclick="window.location.href='orders.html'">Orders</button>
-	    <button onclick="logout()" class="logout-btn">Logout</button>
-	</div>
+        <div class="nav-actions">
+            <button id="retailerLink" class="btn-warning hidden" onclick="window.location.href='retailer.html'">Dashboard</button>
+            <button onclick="window.location.href='cart.html'" class="btn-icon">Cart</button>
+            <button onclick="window.location.href='orders.html'" class="btn-icon">Orders</button>
+            <button onclick="logout()" class="btn-danger-outline">Logout</button>
+        </div>
     </nav>
 
     <div class="main-layout">
         <aside class="sidebar">
-            <h3>Filters</h3>
+            <div class="sidebar-header">
+                <h3>Filters</h3>
+                <button class="clear-btn" onclick="clearFilters()">Reset</button>
+            </div>
             
             <div class="filter-group">
-                <label>Sort By Price</label>
+                <label>Sort By</label>
                 <div class="sort-buttons">
-                    <button id="sortNone" class="sort-btn active" onclick="setSort(null)">Default</button>
-                    <button id="sortAsc" class="sort-btn" onclick="setSort(1)">Low &uarr;</button>
-                    <button id="sortDesc" class="sort-btn" onclick="setSort(-1)">High &darr;</button>
+                    <button id="sortNone" class="sort-btn active" onclick="setSort(null)">Newest</button>
+                    <button id="sortDesc" class="sort-btn" onclick="setSort(-1)">Price &uarr;</button>
+                    <button id="sortAsc" class="sort-btn" onclick="setSort(1)">Price &darr;</button>
                 </div>
             </div>
             
             <div class="filter-group">
                 <label>Price Range</label>
-                <input type="number" id="minPrice" placeholder="Min $">
-                <input type="number" id="maxPrice" placeholder="Max $" style="margin-top:5px;">
+                <div class="price-inputs">
+                    <input type="number" id="minPrice" placeholder="Min" min="0">
+                    <span class="separator">-</span>
+                    <input type="number" id="maxPrice" placeholder="Max" min="0">
+                </div>
             </div>
 
             <div class="filter-group">
                 <label>Category</label>
-                <select id="categoryFilter" onchange="applyFilters()">
-                    <option value="">All Categories</option>
-                </select>
+                <div class="select-wrapper">
+                    <select id="categoryFilter">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
             </div>
-
-            <button class="btn-block" onclick="applyFilters()">Apply Filters</button>
-            <button class="btn-block" onclick="clearFilters()" style="background:#95a5a6; margin-top:10px;">Clear</button>
         </aside>
 
         <main class="content-area">
-            <div class="search-bar-container">
-                <input type="text" id="searchInput" placeholder="Search for products..." onkeypress="handleEnter(event)">
-                <button onclick="applyFilters()">Search</button>
+            <div class="toolbar">
+                <div class="search-wrapper">
+                    <input type="text" id="searchInput" placeholder="Search products...">
+                </div>
             </div>
 
-            <div id="resultsInfo" class="results-info" style="display:none;"></div>
+            <div id="resultsInfo" class="results-info hidden"></div>
 
             <div class="product-grid" id="productContainer">
-                <p>Loading products...</p>
+                <div class="loading-spinner"></div>
             </div>
 
             <div class="pagination" id="paginationControls">
@@ -99,442 +84,34 @@
 
     <div id="reviewModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal" onclick="closeReviewModal()">&times;</span>
+            <button class="close-modal" onclick="closeReviewModal()">&times;</button>
             <h3 id="modalTitle">Reviews</h3>
             
             <div id="reviewList" class="review-list"></div>
             
-            <h4 id="reviewFormTitle">Write a Review</h4>
-            <form id="reviewForm">
-                <input type="hidden" id="reviewProductId">
-                <input type="hidden" id="editingReviewId"> 
+            <div class="review-form-wrapper">
+                <h4 id="reviewFormTitle">Write a Review</h4>
+                <form id="reviewForm">
+                    <input type="hidden" id="reviewProductId">
+                    <input type="hidden" id="editingReviewId"> 
 
-                <div class="form-group">
-                    <label>Rating (1-5)</label>
-                    <input type="number" id="reviewRating" min="1" max="5" required>
-                </div>
-                <div class="form-group">
-                    <label>Comment</label>
-                    <textarea id="reviewComment" rows="3" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;"></textarea>
-                </div>
-                
-                <button type="submit" class="btn-block" id="reviewSubmitBtn">Submit Review</button>
-                <button type="button" id="cancelEditBtn" onclick="resetReviewForm()">Cancel Edit</button>
-            </form>
+                    <div class="form-row">
+                        <label>Rating</label>
+                        <input type="number" id="reviewRating" min="1" max="5" required placeholder="5">
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Comment</label>
+                        <textarea id="reviewComment" rows="3" required placeholder="Share your thoughts..."></textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="cancelEditBtn" onclick="resetReviewForm()" class="btn-ghost hidden">Cancel</button>
+                        <button type="submit" class="btn-primary" id="reviewSubmitBtn">Submit Review</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-
-    <script>
-        const token = localStorage.getItem('accessToken');
-        
-        if (!token) window.location.href = 'login.html';
-
-        let userLikesMap = {};
-        let currentSortValue = null; // State for sort buttons
-        
-        async function checkUserRole() {
-	    const token = localStorage.getItem('accessToken');
-	    if (token) {
-		const decoded = parseJwt(token);
-		if (decoded && decoded.role === 'RETAILER') {
-		    // Un-hide the retailer link
-		    const retailerBtn = document.getElementById('retailerLink');
-		    if(retailerBtn) retailerBtn.style.display = 'inline-block';
-		}
-	    }
-	}
-
-        async function init() {
-            await fetchCategories();
-            await fetchUserLikes();
-            checkUserRole();
-            applyFilters(); 
-        }
-
-        // --- Categories ---
-        async function fetchCategories() {
-            try {
-                const res = await authFetch(`${API_BASE}/api/store/categories/`);
-                if (res.ok) {
-                    const data = await res.json();
-                    const categories = data.results || data;
-                    const navContainer = document.getElementById('navCategoryLinks');
-                    const selectFilter = document.getElementById('categoryFilter');
-
-                    categories.forEach(cat => {
-                        const opt = document.createElement('option');
-                        opt.value = cat.id; 
-                        opt.textContent = cat.name;
-                        selectFilter.appendChild(opt);
-
-                        if (navContainer.children.length < 6) {
-                            const link = document.createElement('a');
-                            link.href = "#";
-                            link.textContent = cat.name;
-                            link.dataset.catId = cat.id; 
-                            link.onclick = (e) => handleHeaderFilter(e, cat.id);
-                            navContainer.appendChild(link);
-                        }
-                    });
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        function handleHeaderFilter(e, catId) {
-            e.preventDefault();
-            document.getElementById('categoryFilter').value = catId; 
-            applyFilters();
-        }
-
-        function handleEnter(e) {
-            if (e.key === 'Enter') applyFilters();
-        }
-        
-        // --- Sorting Logic ---
-        function setSort(val) {
-            currentSortValue = val;
-            
-            // Update UI classes
-            document.getElementById('sortNone').className = (val === null) ? 'sort-btn active' : 'sort-btn';
-            document.getElementById('sortAsc').className  = (val === 1)    ? 'sort-btn active' : 'sort-btn';
-            document.getElementById('sortDesc').className = (val === -1)   ? 'sort-btn active' : 'sort-btn';
-
-            applyFilters();
-        }
-
-        // --- Filters & Sorting ---
-        async function applyFilters() {
-            const min = document.getElementById('minPrice').value;
-            const max = document.getElementById('maxPrice').value;
-            const cat = document.getElementById('categoryFilter').value;
-            const search = document.getElementById('searchInput').value;
-
-            updateActiveHeaderLink(cat);
-
-            let url = `${API_BASE}/api/store/products/filter_products/?num=9`;
-            if (min) url += `&min_price=${min}`;
-            if (max) url += `&max_price=${max}`;
-            if (cat) url += `&category_id=${cat}`;
-            if (search) url += `&search=${encodeURIComponent(search)}`;
-            // Apply Sort Logic: 1 for Low-to-High, -1 for High-to-Low
-            if (currentSortValue !== null) {
-                url += `&sort_by_price=${currentSortValue}`;
-            }
-
-            document.getElementById('prevBtn').disabled = true;
-            document.getElementById('nextBtn').disabled = true;
-
-            await fetchProducts(url);
-        }
-
-        function clearFilters() {
-            document.getElementById('minPrice').value = '';
-            document.getElementById('maxPrice').value = '';
-            document.getElementById('categoryFilter').value = '';
-            document.getElementById('searchInput').value = '';
-
-            setSort(null); 
-            applyFilters();
-        }
-
-        function updateActiveHeaderLink(activeCatId) {
-            const links = document.querySelectorAll('#navCategoryLinks a');
-            links.forEach(link => {
-                if (link.dataset.catId == activeCatId || (activeCatId === '' && !link.dataset.catId)) {
-                    link.classList.add('active');
-                } else {
-                    link.classList.remove('active');
-                }
-            });
-        }
-
-        // --- Fetch Products ---
-        async function fetchProducts(url) {
-            try {
-                const response = await authFetch(url);
-                if (await checkRateLimit(response)) return;
-                if (response.status === 401) { logout(); return; }
-
-                const data = await response.json();
-                
-                if (data.previous) {
-                    document.getElementById('prevBtn').onclick = () => fetchProducts(data.previous);
-                    document.getElementById('prevBtn').disabled = false;
-                }
-                if (data.next) {
-                    document.getElementById('nextBtn').onclick = () => fetchProducts(data.next);
-                    document.getElementById('nextBtn').disabled = false;
-                }
-
-                const resultsDiv = document.getElementById('resultsInfo');
-                const currentCount = data.results ? data.results.length : 0;
-                const totalActive = data.total_active_products !== undefined ? data.total_active_products : 'Unknown';
-                const filteredTotal = data.count !== undefined ? data.count : currentCount;
-
-                resultsDiv.style.display = 'block';
-                resultsDiv.innerHTML = `
-                    Showing <strong>${currentCount}</strong> results 
-                    (Filtered from <strong>${filteredTotal}</strong> matches). 
-                    <span class="total-badge">Total Store Products: ${totalActive}</span>
-                `;
-
-                renderProducts(data.results || []);
-            } catch (error) {
-                console.error("Error:", error);
-                document.getElementById('productContainer').innerHTML = '<p>Error loading products.</p>';
-            }
-        }
-
-        function renderProducts(products) {
-            const container = document.getElementById('productContainer');
-            container.innerHTML = '';
-
-            if (products.length === 0) {
-                container.innerHTML = '<p>No products found.</p>';
-                return;
-            }
-
-            products.forEach(p => {
-                const card = document.createElement('div');
-                card.className = 'product-card';
-                let rawImage = p.image;
-                let imgUrl;
-                
-                if (rawImage) {
-                    // 2. If it's a relative path (doesn't start with http), prepend API_BASE
-                    if (!rawImage.startsWith('http')) {
-                        imgUrl = `${API_BASE}${rawImage}`;
-                    } else {
-                        imgUrl = rawImage;
-                    }
-                } else {
-                    // 3. Fallback if null
-                    imgUrl = 'https://via.placeholder.com/300x200?text=Product';
-                } 
-                
-                const isLiked = !!userLikesMap[p.id];
-                const heartIcon = isLiked ? '&#9829;' : '&#9825;';
-                const likeClass = isLiked ? 'like-btn liked' : 'like-btn';
-                const safeName = p.name.replace(/'/g, "\\'");
-                const catTag = p.category ? `<div class="category-tag">${p.category.name}</div>` : '';
-
-                card.innerHTML = `
-                    <div class="card-header">
-                        <div class="stock">In Stock: ${p.amount_in_stock}</div>
-                        <button class="${likeClass}" onclick="toggleLike(${p.id}, this)">${heartIcon}</button>
-                    </div>
-                    <img src="${imgUrl}" class="product-img">
-                    <div class="product-info">
-                        ${catTag}
-                        <h3>${p.name}</h3>
-                        <div class="price">$${p.price}</div>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn-secondary" onclick="openReviewModal(${p.id}, '${safeName}')">Reviews</button>
-                        <button class="btn-primary" onclick="addToCart(${p.id})">Add to Cart</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        // --- REVIEWS LOGIC ---
-        async function openReviewModal(pid, pname) {
-            resetReviewForm(); 
-            document.getElementById('reviewModal').style.display = 'flex';
-            document.getElementById('modalTitle').textContent = `Reviews: ${pname}`;
-            document.getElementById('reviewProductId').value = pid;
-            
-            const list = document.getElementById('reviewList');
-            list.innerHTML = 'Loading...';
-
-            try {
-                // 1. Fetch All Reviews
-                const allReviewsRes = await fetch(`${API_BASE}/api/store/reviews/?product_id=${pid}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const allReviewsData = await allReviewsRes.json();
-                let allReviews = allReviewsData.results || allReviewsData;
-
-                // 2. Fetch My Review
-                let myReview = null;
-                try {
-                    const myReviewRes = await fetch(`${API_BASE}/api/store/user_review/${pid}/`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (myReviewRes.ok) {
-                        myReview = await myReviewRes.json();
-                    }
-                } catch (err) {
-                    console.log("No user review found");
-                }
-
-                list.innerHTML = '';
-                
-                // Render My Review
-                if (myReview) {
-                    const d = document.createElement('div');
-                    d.className = 'review-card my-review'; 
-                    
-                    const safeComment = myReview.comment.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    
-                    d.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; font-size:0.9em; color:#555;">
-                            <div><strong>You</strong><span class="my-review-badge">YOUR REVIEW</span></div>
-                            <span style="color:#f39c12; font-weight:bold;">${myReview.rating}/5 ★</span>
-                        </div>
-                        <p style="margin:8px 0; color:#333;">${myReview.comment}</p>
-                        <div class="review-actions">
-                            <button onclick="editReview(${myReview.id}, ${myReview.rating}, '${safeComment}')">Edit</button>
-                            <button class="delete-btn" onclick="deleteReview(${pid})">Delete</button>
-                        </div>
-                    `;
-                    list.appendChild(d);
-
-                    // Remove my review from general list
-                    allReviews = allReviews.filter(r => r.id !== myReview.id);
-                }
-
-                // Render Other Reviews
-                if (allReviews.length === 0 && !myReview) {
-                    list.innerHTML = '<p style="color:#777;">No reviews yet.</p>';
-                } else {
-                    allReviews.forEach(r => {
-                        const d = document.createElement('div');
-                        d.className = 'review-card';
-                        
-                        const userDisplay = (r.user && r.user.email) ? r.user.email : 'User';
-                        
-                        d.innerHTML = `
-                            <div style="display:flex; justify-content:space-between; font-size:0.9em; color:#555;">
-                                <strong>${userDisplay}</strong>
-                                <span style="color:#f39c12; font-weight:bold;">${r.rating}/5 ★</span>
-                            </div>
-                            <p style="margin:8px 0; color:#333;">${r.comment}</p>
-                        `;
-                        list.appendChild(d);
-                    });
-                }
-            } catch (error) {
-                console.error(error);
-                list.innerHTML = '<p>Error loading reviews.</p>';
-            }
-        }
-
-        function editReview(id, rating, comment) {
-            document.getElementById('reviewFormTitle').textContent = "Edit Your Review";
-            document.getElementById('editingReviewId').value = id; 
-            document.getElementById('reviewRating').value = rating;
-            document.getElementById('reviewComment').value = comment;
-            document.getElementById('reviewSubmitBtn').textContent = "Update Review";
-            document.getElementById('cancelEditBtn').style.display = 'block';
-            document.getElementById('reviewForm').scrollIntoView({behavior: 'smooth'});
-        }
-
-        function resetReviewForm() {
-            document.getElementById('reviewFormTitle').textContent = "Write a Review";
-            document.getElementById('editingReviewId').value = '';
-            document.getElementById('reviewRating').value = '';
-            document.getElementById('reviewComment').value = '';
-            document.getElementById('reviewSubmitBtn').textContent = "Submit Review";
-            document.getElementById('cancelEditBtn').style.display = 'none';
-        }
-
-        async function deleteReview(productId) {
-            // if(!confirm("Are you sure you want to delete this review?")) return;
-            const confirmed = await showConfirm("Are you sure you want to delete this review?")
-            if (!confirmed) return;
-            
-            const res = await authFetch(`${API_BASE}/api/store/user_review/${productId}/`, {
-                method: 'DELETE'
-            });
-            
-            if (res.ok) {
-                const pname = document.getElementById('modalTitle').textContent.replace('Reviews: ', '');
-                openReviewModal(productId, pname);
-            } else {
-                showToast("Failed to delete review.","error");
-            }
-        }
-
-        document.getElementById('reviewForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const pid = document.getElementById('reviewProductId').value;
-            const isEditing = document.getElementById('editingReviewId').value;
-            const rating = document.getElementById('reviewRating').value;
-            const comment = document.getElementById('reviewComment').value;
-
-            let url = `${API_BASE}/api/store/user_review/`;
-            let method = 'POST';
-            
-            if (isEditing) {
-                url += `${pid}/`; 
-                method = 'PATCH'; 
-            }
-
-            const res = await authFetch(url, {
-                method: method,
-                headers: {'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: pid, rating: rating, comment: comment })
-            });
-            
-            if (res.ok) { 
-                showToast(isEditing ? "Review Updated!" : "Review Submitted!","success"); 
-                resetReviewForm();
-                const pname = document.getElementById('modalTitle').textContent.replace('Reviews: ', '');
-                openReviewModal(pid, pname);
-            } else { 
-                const err = await res.json();
-                if (res.status === 400) {
-                     const errorString = JSON.stringify(err).toLowerCase();
-                     if (errorString.includes('unique') || errorString.includes('exists')) {
-                         showToast("You have already reviewed this product.","error");
-                         return;
-                     }
-                }
-                showToast("Error: " + (err.detail || JSON.stringify(err)),"error"); 
-            }
-        });
-        
-        function closeReviewModal() { document.getElementById('reviewModal').style.display = 'none'; }
-
-        // --- Like & Cart ---
-        async function fetchUserLikes() {
-            try {
-                const res = await authFetch(`${API_BASE}/api/store/liked_product/`);
-                if (res.ok) {
-                    const data = await res.json();
-                    (data.results || data).forEach(like => {
-                        const pId = (like.product && like.product.id) ? like.product.id : like.product;
-                        userLikesMap[pId] = true; 
-                    });
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        async function toggleLike(productId, btn) {
-             const isLiked = userLikesMap[productId];
-             if (isLiked) {
-                btn.classList.remove('liked'); btn.innerHTML = '&#9825;'; 
-                delete userLikesMap[productId];
-                await fetch(`${API_BASE}/api/store/liked_product/${productId}/`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-             } else {
-                btn.classList.add('liked'); btn.innerHTML = '&#9829;'; 
-                userLikesMap[productId] = true;
-                const res = await authFetch(`${API_BASE}/api/store/liked_product/`, { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: productId }) });
-             }
-        }
-
-        async function addToCart(id) {
-            try {
-                const res = await authFetch(`${API_BASE}/api/store/cart/`, { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: id, quantity: 1 }) });
-                if (await checkRateLimit(res)) return;
-                if (res.ok) showToast("Added to cart!","success");
-                else { const d = await res.json(); showToast("Failed: " + (d.detail || JSON.stringify(d)),"error"); }
-            } catch (e) { console.error(e); }
-        }
-
-        init();
-    </script>
 </body>
 </html>

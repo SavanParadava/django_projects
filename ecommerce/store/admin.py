@@ -14,9 +14,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 class ProductAdmin(admin.ModelAdmin):
     list_display = [field.name for field in Product._meta.fields]
-    search_fields = ("name", "category__name", "retailer")
-    ordering = ("category__name",)
-    list_filter = ("category",)
+    search_fields = ("name", "category__name", "retailer__email")
+    ordering = ("category__name","created_at")
+    list_filter = ("category","created_at", "is_active")
 
 class OrderAdmin(admin.ModelAdmin):
     list_display = [field.name for field in Order._meta.fields]
@@ -38,6 +38,10 @@ class ReviewAdmin(admin.ModelAdmin):
     search_fields = ("user__email", "product__name", "comment")
     ordering = ("-created_at",)
 
+class AddressAdmin(admin.ModelAdmin):
+    list_display = [field.name for field in Address._meta.fields]
+    search_fields = ("user__email", "city__name")
+
 # Register your models here
 admin.site.register(StoreUser, StoreUserAdmin)
 admin.site.register(Category, CategoryAdmin)
@@ -46,3 +50,4 @@ admin.site.register(Order, OrderAdmin)
 admin.site.register(Cart, CartAdmin)
 admin.site.register(LikedProduct, LikedProductAdmin)
 admin.site.register(Review, ReviewAdmin)
+admin.site.register(Address, AddressAdmin)

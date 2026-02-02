@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField()
     password = serializers.CharField(write_only=True,
                                      validators=[validate_password])
     role = serializers.ChoiceField(choices=['ADMIN', 'RETAILER', 'CUSTOMER'],
@@ -24,13 +25,21 @@ class CustomUserSerializer(serializers.ModelSerializer):
         if CustomUser.objects.filter(email__iexact=lower_email).exists():
             raise serializers.ValidationError("Duplicate Email Already exist")
         return lower_email
+    
+    def validate_username(self, value):
+        if CustomUser.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Duplicate Username Already exist")
+        return value
 
 class ResetPasswordRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
+
 class ResetPasswordSerializer(serializers.Serializer):
-    new_password = serializers.RegexField(
-        regex=r'^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$',
-        write_only=True,
-        error_messages={'invalid': ('Password must be at least 8 characters long with at least one capital letter and symbol')})
-    confirm_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        return data

@@ -5,13 +5,22 @@
     <title>My Cart</title>
     <link rel="stylesheet" href="style.css">
     <script src="utils.js"></script>
+    <style>
+        /* Simple Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 8px; width: 500px; max-width: 90%; }
+        .address-card { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 4px; cursor: pointer; }
+        .address-card.selected { border-color: var(--success); background-color: #f0fff4; }
+        .form-group { margin-bottom: 10px; }
+        .form-group input { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+    </style>
 </head>
 <body>
     <nav>
         <h1>Shopping Cart</h1>
         <div>
-            <button onclick="window.location.href='index.html'">Continue Shopping</button>
-            <button onclick="logout()" class="logout-btn">Logout</button>
+            <button onclick="window.location.href='index.html'" class="btn-outline">Continue Shopping</button>
+            <button onclick="logout()" class="btn-danger-outline">Logout</button>
         </div>
     </nav>
     <div class="center-wrapper" style="align-items: flex-start; margin-top: 50px;">
@@ -20,14 +29,46 @@
             <div id="cartContainer">Loading...</div>
             <div id="totalSection" style="text-align:right; margin-top:20px; display:none; background:white; padding:20px; border-radius:8px;">
                 <h3>Total: $<span id="grandTotal">0.00</span></h3>
-                <button class="btn-block" style="background:var(--success); max-width:200px; display:inline-block;" onclick="processPayment()">Make Payment</button>
+                <button class="btn-block" style="background:var(--success); max-width:200px; display:inline-block;" onclick="openAddressModal()">Proceed to Checkout</button>
             </div>
         </div>
     </div>
+
+    <div id="addressModal" class="modal">
+        <div class="modal-content">
+            <h2>Select Delivery Address</h2>
+            <div id="addressList">Loading addresses...</div>
+            
+            <button onclick="showAddAddressForm()" class="btn-outline" style="width:100%; margin-top:10px;">+ Add New Address</button>
+            
+            <div id="newAddressForm" style="display:none; margin-top:15px; border-top:1px solid #eee; padding-top:15px;">
+                <h4>New Address</h4>
+                <div class="form-group"><input id="addrStreet" placeholder="Street Address"></div>
+                <div class="form-group"><input id="addrCity" placeholder="City"></div>
+                <div style="display:flex; gap:10px;">
+                    <div class="form-group"><input id="addrState" placeholder="State"></div>
+                    <div class="form-group"><input id="addrZip" placeholder="Zip Code"></div>
+                </div>
+                <div class="form-group"><input id="addrCountry" placeholder="Country"></div>
+                <div class="form-group"><input id="addrPhone" placeholder="Phone Number"></div>
+                <button onclick="saveNewAddress()" class="btn-block" style="background:var(--primary);">Save Address</button>
+                <button onclick="hideAddAddressForm()" class="btn-outline" style="margin-top:5px;">Cancel</button>
+            </div>
+
+            <div style="margin-top: 20px; text-align: right; border-top: 1px solid #ddd; padding-top: 10px;">
+                <button onclick="closeModal()" class="btn-outline" style="margin-right: 10px;">Cancel</button>
+                <button onclick="processPayment()" class="btn-block" style="width: auto; background: var(--success);">Pay & Order</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const token = localStorage.getItem('accessToken');
         if (!token) window.location.href = 'login.html';
+        
+        let selectedAddressId = null;
 
+        // --- CART FUNCTIONS (Existing) ---
         async function fetchCart() {
             const res = await authFetch(`${API_BASE}/api/store/cart/`);
             const data = await res.json();
@@ -46,15 +87,11 @@
             items.forEach(item => {
                 const itemTotal = item.quantity * item.product.price;
                 total += itemTotal;
-                
-                // Get Product ID for updates
                 const pid = item.product.id; 
-                // Handle missing image
-                const img = item.product.image || 'https://via.placeholder.com/50';
+                const img = item.product.image || 'placeholder.jpg';
 
                 const div = document.createElement('div');
                 div.className = 'product-card';
-                // Override card styles for list view
                 div.style.flexDirection = 'row';
                 div.style.justifyContent = 'space-between';
                 div.style.alignItems = 'center';
@@ -68,11 +105,10 @@
                             <p class="price" style="font-size:1rem; margin:5px 0;">$${item.product.price}</p>
                         </div>
                     </div>
-                    
                     <div style="display:flex; align-items:center; gap:20px;">
-                        <div class="qty-controls">
+                        <div class="qty-controls" style="display:flex; align-items:center;">
                             <button class="qty-btn" onclick="updateQuantity(${pid}, ${item.quantity - 1})">-</button>
-                            <span style="font-weight:bold; width:20px; text-align:center;">${item.quantity}</span>
+                            <input type="number" value="${item.quantity}" min="0" style="width:50px; text-align:center; margin:0 5px;" onchange="updateQuantity(${pid}, parseInt(this.value))">
                             <button class="qty-btn" onclick="updateQuantity(${pid}, ${item.quantity + 1})">+</button>
                         </div>
                         <b style="color:var(--success); min-width:80px; text-align:right;">$${itemTotal.toFixed(2)}</b>
@@ -87,25 +123,15 @@
 
         async function updateQuantity(pid, newQty) {
             if (newQty < 1) {
-                // if(confirm("Remove item from cart?")) {
-                //     removeItem(pid);
-                // }
-                const confirmed = await showConfirm("Remove item from cart?")
-                if(confirmed) removeItem(pid);
+                if(confirm("Remove item?")) removeItem(pid);
                 return;
             }
-
             const res = await authFetch(`${API_BASE}/api/store/cart/${pid}/`, { 
                 method: 'PATCH', 
                 headers: {'Content-Type': 'application/json' },
                 body: JSON.stringify({ quantity: newQty })
             });
-
-            if (res.ok) {
-                fetchCart(); // Refresh UI
-            } else {
-                showToast("Failed to update quantity.","error");
-            }
+            if (res.ok) fetchCart();
         }
 
         async function removeItem(pid) {
@@ -113,25 +139,122 @@
             fetchCart();
         }
 
-        async function processPayment() {
-            showToast("Payment successful. Placing orders...","success");            
-            // Get current items
-            const res = await authFetch(`${API_BASE}/api/store/cart/`);
-            const data = await res.json();
-            const items = data.results || data;
+        // --- ADDRESS & CHECKOUT FUNCTIONS (New) ---
+
+        function openAddressModal() {
+            document.getElementById('addressModal').style.display = 'block';
+            fetchAddresses();
+        }
+
+        function closeModal() {
+            document.getElementById('addressModal').style.display = 'none';
+        }
+
+        function showAddAddressForm() {
+            document.getElementById('newAddressForm').style.display = 'block';
+        }
+
+        function hideAddAddressForm() {
+            document.getElementById('newAddressForm').style.display = 'none';
+        }
+
+        async function fetchAddresses() {
+            const list = document.getElementById('addressList');
+            list.innerHTML = 'Loading...';
             
-            // Convert to orders
-            for (const item of items) {
-                await fetch(`${API_BASE}/api/store/orders/`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ product_id: item.product.id, quantity: item.quantity, total_amount: item.product.price * item.quantity })
+            try {
+                const res = await authFetch(`${API_BASE}/api/store/addresses/`);
+                const addresses = await res.json();
+                
+                list.innerHTML = '';
+                if(addresses.length === 0) {
+                    list.innerHTML = '<p>No addresses found. Please add one.</p>';
+                    showAddAddressForm(); // Auto open form if no addresses
+                }
+
+                addresses.forEach(addr => {
+                    const div = document.createElement('div');
+                    div.className = 'address-card';
+                    div.innerHTML = `
+                        <strong>${addr.street_address}</strong><br>
+                        ${addr.city}, ${addr.state} ${addr.zip_code}<br>
+                        ${addr.country} (Ph: ${addr.phone_number})
+                    `;
+                    div.onclick = () => selectAddress(div, addr.id);
+                    
+                    // Auto select default or first
+                    if(selectedAddressId === addr.id || (!selectedAddressId && addr.is_default)) {
+                        selectAddress(div, addr.id);
+                    }
+                    
+                    list.appendChild(div);
                 });
-                // Remove from cart
-                await fetch(`${API_BASE}/api/store/cart/${item.product.id}/`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            } catch(e) {
+                list.innerHTML = '<p style="color:red">Error loading addresses</p>';
             }
+        }
+
+        function selectAddress(element, id) {
+            // Remove selected class from all
+            document.querySelectorAll('.address-card').forEach(el => el.classList.remove('selected'));
+            // Add to clicked
+            element.classList.add('selected');
+            selectedAddressId = id;
+        }
+
+        async function saveNewAddress() {
+            const payload = {
+                street_address: document.getElementById('addrStreet').value,
+                city: document.getElementById('addrCity').value,
+                state: document.getElementById('addrState').value,
+                zip_code: document.getElementById('addrZip').value,
+                country: document.getElementById('addrCountry').value,
+                phone_number: document.getElementById('addrPhone').value,
+                is_default: true // Make new address default
+            };
+
+            const res = await authFetch(`${API_BASE}/api/store/addresses/`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                hideAddAddressForm();
+                fetchAddresses(); // Reload list
+            } else {
+                alert("Failed to save address. Please check inputs.");
+            }
+        }
+
+        async function processPayment() {
+            if(!selectedAddressId) {
+                alert("Please select a delivery address.");
+                return;
+            }
+
+            const res = await fetch(`${API_BASE}/api/store/cart/checkout/`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`, 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ address_id: selectedAddressId })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(data.detail || "Checkout failed");
+                return;
+            }
+
+            // Success
+            alert("Payment successful! Order placed.");
             window.location.href = 'orders.html';
         }
+
+        // Initialize
         fetchCart();
     </script>
 </body>
