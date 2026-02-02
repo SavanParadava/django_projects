@@ -172,20 +172,205 @@
 # populate_data()
 
 
+# import os
+# import random
+# from faker import Faker
+# from django.conf import settings
+# from django.contrib.auth import get_user_model
+# from django.core.management.base import BaseCommand
+# from store.models import Category, Product, StoreUser
+# from PIL import Image, ImageDraw
+
+# fake = Faker()
+# User = get_user_model()
+
+# class Command(BaseCommand):
+#     help = 'Populate the database with dummy data'
+
+#     def handle(self, *args, **kwargs):
+#         self.stdout.write("Starting data population...")
+#         populate_data(self)
+#         self.stdout.write(self.style.SUCCESS("Data population complete!"))
+
+# def create_dummy_image():
+#     # Define path: media/products/dummy.jpg
+#     media_root = settings.MEDIA_ROOT
+#     product_img_dir = os.path.join(media_root, 'products')
+#     os.makedirs(product_img_dir, exist_ok=True)
+    
+#     img_filename = 'dummy.jpg'
+#     img_path = os.path.join(product_img_dir, img_filename)
+
+#     # Only create if it doesn't exist
+#     if not os.path.exists(img_path):
+#         print("Generating dummy image...")
+#         # Create a 600x600 image with a random color
+#         color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+#         image = Image.new('RGB', (600, 600), color=color)
+#         d = ImageDraw.Draw(image)
+#         d.text((10,10), "Dummy Product", fill=(255,255,255))
+#         image.save(img_path)
+#         print(f"Saved dummy image at: {img_path}")
+    
+#     # Return relative path for DB
+#     return os.path.join('products', img_filename)
+
+# def populate_data(command_instance):
+#     # 1. Setup Dummy Image
+#     dummy_image_path = create_dummy_image()
+
+#     # 2. Categories
+#     categories = ["Electronics", "Clothing", "Home & Kitchen", "Books", "Sports", "Toys", "Beauty", "Automotive", "Garden", "Music"]
+#     cat_objs = []
+#     for name in categories:
+#         cat, _ = Category.objects.get_or_create(name=name)
+#         cat_objs.append(cat)
+#     print(f"Categories ready: {len(cat_objs)}")
+
+#     # 3. Create 1,000 Retailers (CustomUser)
+#     # We must create them one by one to ensure the 'post_save' signal fires and creates the StoreUser
+#     current_count = User.objects.filter(role='RETAILER').count()
+#     needed = 1000 - current_count
+#     print("here 1")
+    
+#     if needed > 0:
+#         print(f"Generating {needed} Retailers (this triggers signals)...")
+#         for i in range(needed):
+#             email = fake.unique.email()
+            
+#             # Create CustomUser
+#             # Using User() + set_password() + save() is safer than create_user() if custom managers are tricky
+#             user = User(
+#                 email=email, 
+#                 role='RETAILER', 
+#                 is_verified=True
+#             )
+#             user.set_password('password123')
+#             user.save() # This triggers the signal to create StoreUser
+            
+#             if (i + 1) % 100 == 0:
+#                 print(f"Created {i + 1} users...")
+#     print("here 2")
+    
+#     # Fetch StoreUsers (profiles) to assign to products
+#     # We filter by the role of the related CustomUser
+#     retailers = list(StoreUser.objects.filter(role='RETAILER'))
+#     if not retailers:
+#         print("Error: No StoreUsers found. Check if your signals.py is working correctly.")
+#         return
+#     print("here 3")
+
+#     # 4. Create 10,000 Products
+#     print("Generating 10,000 Products (this may take a moment)...")
+#     products_to_create = []
+    
+#     for i in range(10000):
+#         products_to_create.append(Product(
+#             name=fake.catch_phrase(),
+#             price=round(random.uniform(10.0, 1000.0), 2),
+#             amount_in_stock=random.randint(0, 500),
+#             category=random.choice(cat_objs),
+#             retailer=random.choice(retailers),
+#             is_active=True,
+#             image=dummy_image_path
+#         ))
+        
+#         # Batch insert every 1000 items
+#         if len(products_to_create) >= 1000:
+#             Product.objects.bulk_create(products_to_create)
+#             products_to_create = []
+#             print(f"Created {i+1} products...")
+
+#     if products_to_create:
+#         Product.objects.bulk_create(products_to_create)
+
+
 import os
 import random
-from faker import Faker
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from store.models import Category, Product, StoreUser
 from PIL import Image, ImageDraw
 
-fake = Faker()
 User = get_user_model()
 
+# --- Configuration: Real Data ---
+
+RETAILER_EMAILS = [
+    "tech_world@example.com",
+    "fashion_hub@example.com",
+    "home_essentials@example.com",
+    "book_haven@example.com",
+    "sports_pro@example.com"
+]
+
+REAL_PRODUCTS = {
+    "Electronics": [
+        {"name": "Apple iPhone 14 (128GB)", "price": 799.00},
+        {"name": "Samsung Galaxy S23 Ultra", "price": 1199.00},
+        {"name": "Sony WH-1000XM5 Noise Canceling Headphones", "price": 348.00},
+        {"name": "MacBook Air M2 Chip", "price": 1099.00},
+        {"name": "Logitech MX Master 3S Mouse", "price": 99.99},
+        {"name": "LG 4K UHD Monitor 27-inch", "price": 299.00},
+    ],
+    "Clothing": [
+        {"name": "Levi's Men's 501 Original Fit Jeans", "price": 59.50},
+        {"name": "Adidas Essentials Hoodie", "price": 45.00},
+        {"name": "Nike Air Force 1 Sneakers", "price": 110.00},
+        {"name": "Cotton Crew Neck T-Shirt (3-Pack)", "price": 18.99},
+        {"name": "Ray-Ban Aviator Sunglasses", "price": 160.00},
+    ],
+    "Home & Kitchen": [
+        {"name": "Instant Pot Duo 7-in-1 Pressure Cooker", "price": 89.00},
+        {"name": "Keurig K-Elite Coffee Maker", "price": 149.00},
+        {"name": "Dyson V15 Detect Vacuum", "price": 649.00},
+        {"name": "Queen Size Hotel Luxury Bed Sheets", "price": 35.99},
+        {"name": "Ninja Professional Blender", "price": 99.00},
+    ],
+    "Books": [
+        {"name": "Clean Code by Robert C. Martin", "price": 42.00},
+        {"name": "The Pragmatic Programmer", "price": 38.50},
+        {"name": "Atomic Habits by James Clear", "price": 14.00},
+        {"name": "Introduction to Algorithms (CLRS)", "price": 85.00},
+        {"name": "Harry Potter and the Sorcerer's Stone", "price": 12.00},
+    ],
+    "Sports": [
+        {"name": "Wilson Tennis Racket", "price": 120.00},
+        {"name": "Yoga Mat Non-Slip", "price": 25.00},
+        {"name": "Adjustable Dumbbell Set (50lbs)", "price": 199.00},
+        {"name": "Adidas Soccer Ball", "price": 22.00},
+        {"name": "Fitbit Charge 5 Activity Tracker", "price": 129.00},
+    ],
+    "Toys": [
+        {"name": "LEGO Star Wars Millennium Falcon", "price": 159.00},
+        {"name": "Barbie Dreamhouse", "price": 179.00},
+        {"name": "Hot Wheels 10-Car Pack", "price": 12.99},
+    ],
+    "Beauty": [
+        {"name": "CeraVe Moisturizing Cream", "price": 15.00},
+        {"name": "Dyson Supersonic Hair Dryer", "price": 399.00},
+        {"name": "La Roche-Posay Sunscreen SPF 60", "price": 24.00},
+    ],
+    "Automotive": [
+        {"name": "Chemical Guys Car Wash Kit", "price": 49.99},
+        {"name": "NOCO Boost Plus Jump Starter", "price": 99.95},
+        {"name": "Meguiar's Ultimate Liquid Wax", "price": 22.00},
+    ],
+    "Garden": [
+        {"name": "Fiskars Pruning Shears", "price": 14.00},
+        {"name": "Miracle-Gro Plant Food", "price": 11.00},
+        {"name": "Outdoor Patio String Lights", "price": 35.00},
+    ],
+    "Music": [
+        {"name": "Fender Stratocaster Electric Guitar", "price": 799.00},
+        {"name": "Yamaha 88-Key Digital Piano", "price": 549.00},
+        {"name": "Audio-Technica AT2020 Microphone", "price": 99.00},
+    ]
+}
+
 class Command(BaseCommand):
-    help = 'Populate the database with dummy data'
+    help = 'Populate the database with realistic dummy data'
 
     def handle(self, *args, **kwargs):
         self.stdout.write("Starting data population...")
@@ -205,10 +390,11 @@ def create_dummy_image():
     if not os.path.exists(img_path):
         print("Generating dummy image...")
         # Create a 600x600 image with a random color
-        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        color = (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200))
         image = Image.new('RGB', (600, 600), color=color)
         d = ImageDraw.Draw(image)
-        d.text((10,10), "Dummy Product", fill=(255,255,255))
+        # Using a simple rectangle if font issues occur, or just color
+        d.rectangle([200, 200, 400, 400], outline=(255,255,255), width=5)
         image.save(img_path)
         print(f"Saved dummy image at: {img_path}")
     
@@ -220,66 +406,49 @@ def populate_data(command_instance):
     dummy_image_path = create_dummy_image()
 
     # 2. Categories
-    categories = ["Electronics", "Clothing", "Home & Kitchen", "Books", "Sports", "Toys", "Beauty", "Automotive", "Garden", "Music"]
-    cat_objs = []
-    for name in categories:
-        cat, _ = Category.objects.get_or_create(name=name)
-        cat_objs.append(cat)
-    print(f"Categories ready: {len(cat_objs)}")
-
-    # 3. Create 1,000 Retailers (CustomUser)
-    # We must create them one by one to ensure the 'post_save' signal fires and creates the StoreUser
-    current_count = User.objects.filter(role='RETAILER').count()
-    needed = 1000 - current_count
-    print("here 1")
+    print(f"Creating/Checking {len(REAL_PRODUCTS)} Categories...")
+    cat_map = {} # name -> Category Obj
+    for name in REAL_PRODUCTS.keys():
+        cat, created = Category.objects.get_or_create(name=name)
+        cat_map[name] = cat
     
-    if needed > 0:
-        print(f"Generating {needed} Retailers (this triggers signals)...")
-        for i in range(needed):
-            email = fake.unique.email()
-            
-            # Create CustomUser
-            # Using User() + set_password() + save() is safer than create_user() if custom managers are tricky
-            user = User(
-                email=email, 
-                role='RETAILER', 
-                is_verified=True
-            )
-            user.set_password('password123')
-            user.save() # This triggers the signal to create StoreUser
-            
-            if (i + 1) % 100 == 0:
-                print(f"Created {i + 1} users...")
-    print("here 2")
+    # 3. Create Retailers
+    print("Creating Retailers...")
+    for email in RETAILER_EMAILS:
+        if not User.objects.filter(email=email).exists():
+            u = User(email=email, role='RETAILER', is_verified=True)
+            u.set_password('password123')
+            u.save() # Triggers signal for StoreUser
+            print(f"  - Created retailer: {email}")
     
-    # Fetch StoreUsers (profiles) to assign to products
-    # We filter by the role of the related CustomUser
+    # Fetch StoreUsers
     retailers = list(StoreUser.objects.filter(role='RETAILER'))
     if not retailers:
-        print("Error: No StoreUsers found. Check if your signals.py is working correctly.")
+        print("Error: No StoreUsers found. Ensure signals are working.")
         return
-    print("here 3")
 
-    # 4. Create 10,000 Products
-    print("Generating 10,000 Products (this may take a moment)...")
+    # 4. Create Products
+    print("Creating Products...")
     products_to_create = []
     
-    for i in range(10000):
-        products_to_create.append(Product(
-            name=fake.catch_phrase(),
-            price=round(random.uniform(10.0, 1000.0), 2),
-            amount_in_stock=random.randint(0, 500),
-            category=random.choice(cat_objs),
-            retailer=random.choice(retailers),
-            is_active=True,
-            image=dummy_image_path
-        ))
+    for cat_name, items in REAL_PRODUCTS.items():
+        category_obj = cat_map[cat_name]
         
-        # Batch insert every 1000 items
-        if len(products_to_create) >= 1000:
-            Product.objects.bulk_create(products_to_create)
-            products_to_create = []
-            print(f"Created {i+1} products...")
+        for item in items:
+            # Check if product already exists to avoid duplicates on re-run
+            if not Product.objects.filter(name=item['name']).exists():
+                products_to_create.append(Product(
+                    name=item['name'],
+                    price=item['price'],
+                    amount_in_stock=random.randint(10, 100),
+                    category=category_obj,
+                    retailer=random.choice(retailers),
+                    is_active=True,
+                    image=dummy_image_path
+                ))
 
     if products_to_create:
         Product.objects.bulk_create(products_to_create)
+        print(f"Successfully added {len(products_to_create)} new products.")
+    else:
+        print("No new products to add (they might already exist).")

@@ -30,9 +30,11 @@ class ProductSerializer(serializers.ModelSerializer):
         source='retailer',
         read_only=True)
     
+    retailer = StoreUserSerializer(read_only=True)
+    
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'amount_in_stock', 'category_id', 'category', 'retailer_id', 'image']
+        fields = ['id', 'name', 'price', 'amount_in_stock', 'category_id', 'category', 'retailer_id', 'image', 'retailer']
 
 class OrderSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
@@ -45,7 +47,7 @@ class OrderSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Order
-        fields = ['product_id', 'user', 'product', 'quantity', 'total_amount', 'created_at']
+        fields = ['id','product_id', 'user', 'product', 'quantity', 'total_amount', 'created_at', 'user_id']
     
     def validate_user(self, value):
         return get_object_or_404(StoreUser,original_user_id=value.id)
@@ -114,6 +116,15 @@ class EditReviewSerializer(serializers.ModelSerializer):
     def validate_user(self, value):
         return get_object_or_404(StoreUser,original_user_id=value.id)
     
+class AddressSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Address
+        fields = ['id', 'user', 'street_address', 'city', 'state', 'zip_code', 'country', 'phone_number', 'is_default']
+    
+    def validate_user(self, value):
+        return get_object_or_404(StoreUser, original_user_id=value.id)
 
 
     # user_id = serializers.SlugRelatedField(

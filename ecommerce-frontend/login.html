@@ -2,27 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="utils.js"></script>
 </head>
 <body>
     <div class="center-wrapper">
         <div class="form-box">
-            <h2>Login</h2>
+            <h2>Welcome Back</h2>
             <form id="loginForm">
                 <div class="form-group">
-                    <label>Email Address</label>
-                    <input type="email" id="email" required>
+                    <label>Email or Username</label>
+                    <input type="text" id="loginInput" required placeholder="Username or name@example.com">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" required>
+                    <input type="password" id="password" required placeholder="••••••••">
                 </div>
-                <button type="submit" class="btn-block">Sign In</button>
+                
+                <button type="submit" class="btn-primary btn-block">Sign In</button>
+                
                 <div class="link-text">
-                    <a href="forgot_password.html">Forgot Password?</a><br><br>
-                    New user? <a href="register.html">Create Account</a>
+                    <a href="forgot_password.html">Forgot Password?</a>
+                    <div style="margin-top: 10px;">
+                        New user? <a href="register.html">Create Account</a>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
+                    <a href="index.html" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">&larr; Back to Store</a>
                 </div>
             </form>
         </div>
@@ -30,14 +40,24 @@
     <script>
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const email = document.getElementById('email').value;
+            
+            // Get value and trim whitespace
+            const loginIdentifier = document.getElementById('loginInput').value.trim();
             const password = document.getElementById('password').value;
+
+            // Initialize payload with password
+            const payload = { password };
+
+            // CONDITIONAL LOGIC:
+            // If it has an '@', tell backend it's an Email.
+            // Otherwise, tell backend it's a Username.
+            payload.username = loginIdentifier
 
             try {
                 const response = await fetch(`${API_BASE}/api/token/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify(payload)
                 });
 
                 if (await checkRateLimit(response)) return;
@@ -47,21 +67,20 @@
                 if (response.ok) {
                     localStorage.setItem('accessToken', data.access);
                     localStorage.setItem('refreshToken', data.refresh);
-                    // 1. Decode the token
-		    const decoded = parseJwt(data.access);
-		    
-		    // 2. Check Role and Redirect
-		    if (decoded && decoded.role === 'RETAILER') {
-			window.location.href = 'retailer.html'; // Redirect retailers to dashboard
-		    } else {
-			window.location.href = 'index.html';    // Redirect customers to store
-		    }
+                    
+                    const decoded = parseJwt(data.access);
+                    if (decoded && decoded.role === 'RETAILER') {
+                        window.location.href = 'retailer.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 } else {
-                    showToast(data.detail || "Login failed.","error");
+                    // Show error from backend (e.g., "No active account found with the given credentials")
+                    showToast(data.detail || "Login failed.", "error");
                 }
             } catch (error) {
                 console.error(error);
-                showToast("Server error.","error");
+                showToast("Server error.", "error");
             }
         });
     </script>

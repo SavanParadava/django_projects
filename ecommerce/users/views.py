@@ -6,6 +6,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils import timezone
+from datetime import timedelta
 
 from .permissions import IsAdmin
 from .serializers import CustomUserSerializer, ResetPasswordRequestSerializer, ResetPasswordSerializer
@@ -73,7 +75,8 @@ class RequestPasswordReset(generics.GenericAPIView):
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
-        email = request.data['email']
+        if serializer.is_valid():
+            email = serializer.data['email']
         user = CustomUser.objects.filter(email__iexact=email).first()
         if not email:
             return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -97,30 +100,28 @@ class ResetPassword(generics.GenericAPIView):
     permission_classes = []
 
     def post(self, request, token):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        
-        new_password = data['new_password']
-        confirm_password = data['confirm_password']
-        
-        if new_password != confirm_password:
-            return Response({"error": "Passwords do not match"}, status=400)
-        
         reset_obj = PasswordReset.objects.filter(token=token).first()
         
-        if not reset_obj:
-            return Response({'error':'Invalid token'}, status=400)
+        expiry_period = timedelta(hours=1)
+        if not reset_obj or (timezone.now() - reset_obj.created_at > expiry_period):
+            return Response(
+                {'error': 'Invalid or expired token'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         user = CustomUser.objects.filter(email=reset_obj.email).first()
         
         if user:
-            user.set_password(request.data['new_password'])
+            user.set_password(serializer.validated_data['new_password'])
             user.save()
             
             PasswordReset.objects.filter(email=reset_obj.email).delete()
-            # reset_obj.delete()
             
-            return Response({'success':'Password updated'})
-        else: 
-            return Response({'error':'No user found'}, status=404)
+            return Response({'success': 'Password updated'}, status=status.HTTP_200_OK)
+        
+        return Response(
+            {'error': 'User not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )

@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import CheckConstraint, UniqueConstraint, Q
+from django.core.validators import RegexValidator
+
 
 class StoreUser(models.Model):
     original_user_id = models.PositiveIntegerField(unique=True, db_index=True)
@@ -33,16 +35,6 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
-class Order(models.Model):
-    user = models.ForeignKey(StoreUser, on_delete=models.CASCADE, to_field='original_user_id', related_name='orders') 
-    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='orders')
-    quantity = models.PositiveIntegerField()
-    total_amount = models.FloatField()
-    created_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.user.email}: {self.product.name}"
-
 class Cart(models.Model):
     user = models.ForeignKey(StoreUser, on_delete=models.CASCADE, to_field='original_user_id')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -74,3 +66,29 @@ class Review(models.Model):
 
     class Meta:
         unique_together = ('user', 'product')
+
+
+class Address(models.Model):
+    user = models.ForeignKey(StoreUser, on_delete=models.CASCADE, to_field='original_user_id', related_name='addresses')
+    street_address = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    zip_code = models.CharField(max_length=20)
+    country = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=20)
+    is_default = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.street_address}, {self.city}"
+
+class Order(models.Model):
+    user = models.ForeignKey(StoreUser, on_delete=models.CASCADE, to_field='original_user_id', related_name='orders') 
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='orders')
+    quantity = models.PositiveIntegerField()
+    total_amount = models.FloatField()
+    created_at = models.DateTimeField(auto_now=True)
+    shipping_address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.email}: {self.product.name}"
+

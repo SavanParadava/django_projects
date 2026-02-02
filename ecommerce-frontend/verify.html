@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Email</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="utils.js"></script>
 </head>
@@ -10,7 +12,7 @@
     <div class="center-wrapper">
         <div class="form-box">
             <h2>Verify Account</h2>
-            <p style="text-align:center;">Enter the OTP sent to your email.</p>
+            <p style="text-align:center; color:var(--text-muted); margin-bottom:1.5rem;">Enter the OTP sent to your email.</p>
             <form id="verifyForm">
                 <div class="form-group">
                     <label>Email Address</label>
@@ -18,15 +20,18 @@
                 </div>
                 <div class="form-group">
                     <label>OTP Code</label>
-                    <input type="text" id="otp" required placeholder="123456">
+                    <input type="text" id="otp" required placeholder="123456" style="letter-spacing: 2px; font-weight: 600;">
                 </div>
-                <button type="submit" class="btn-block">Verify</button>
+                <button type="submit" class="btn-primary btn-block">Verify Account</button>
+                
+                <div class="link-text">
+                     <a href="login.html" style="color:var(--text-muted); font-size:0.9rem;">Back to Login</a>
+                </div>
             </form>
         </div>
     </div>
 
     <script>
-        // Auto-fill email if available from registration step
         const storedEmail = localStorage.getItem('emailForVerification');
         if (storedEmail) {
             document.getElementById('email').value = storedEmail;
@@ -49,9 +54,9 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    showToast("Verification successful! You can now login.","success");
-                    localStorage.removeItem('emailForVerification'); // Clean up
-                    window.location.href = 'login.html';
+                    showToast("Verification successful!","success");
+                    localStorage.removeItem('emailForVerification');
+                    setTimeout(() => window.location.href = 'login.html', 1500);
                 } else {
                     showToast("Verification Failed: " + (data.detail || JSON.stringify(data)),"error");
                 }
