@@ -146,7 +146,7 @@ function showConfirm(message) {
                 <h3 style="margin-top:0">Are you sure?</h3>
                 <p>${message}</p>
                 <div class="confirm-actions">
-                    <button id="confirmYes" class="confirm-btn-yes">Yes, Delete</button>
+                    <button id="confirmYes" class="confirm-btn-yes">Yes</button>
                     <button id="confirmNo" class="confirm-btn-no">Cancel</button>
                 </div>
             </div>
