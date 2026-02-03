@@ -138,7 +138,7 @@ body {
     align-items: center;
     position: sticky;
     top: 0;
-    z-index: 1000;
+    z-index: 10001 !important;
     box-shadow: var(--shadow-sm);
 }
 
@@ -389,7 +389,7 @@ body {
 .pagination button:disabled { background: var(--background); color: #cbd5e1; cursor: not-allowed; }
 
 /* --- Toasts --- */
-.toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 20000 !important; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .toast {
     background: var(--surface); color: var(--text-main); min-width: 300px; padding: 16px 20px;
     border-radius: var(--radius-sm); box-shadow: var(--shadow-md); display: flex; align-items: center; gap: 12px;
@@ -528,4 +528,77 @@ body {
     .order-header-row { flex-direction: column; align-items: flex-start; gap: 10px; }
     .order-body { flex-direction: column; align-items: flex-start; }
     .order-pricing { text-align: left; margin-top: 10px; }
+}
+
+/* for retailer dashboard */
+/* --- Dashboard Specific Styles --- */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+    align-items: start;
+}
+
+/* Inventory List Items */
+.product-item {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+    border-color: #cbd5e1;
+}
+
+/* Thumbnail styling */
+.item-thumbnail {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: #f1f5f9;
+    flex-shrink: 0;
+}
+
+.item-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-grow: 1;
+}
+
+.item-info h4 { margin: 0 0 4px 0; font-size: 1rem; color: var(--text-main); }
+.item-meta { font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+
+.btn-icon-small {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    transition: 0.2s;
+}
+.btn-icon-small:hover { background: #f1f5f9; color: var(--primary); }
+
+.status-pill {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
 }
