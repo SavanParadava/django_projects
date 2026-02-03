@@ -35,16 +35,27 @@ async function init() {
 
 function updateNavState() {
     const navActions = document.querySelector('.nav-actions');
+    if (!navActions) return; 
     
     if (state.token) {
-        // Logged In View
-        navActions.innerHTML = `
-            <button id="retailerLink" class="btn-warning hidden" onclick="window.location.href='retailer.html'">Dashboard</button>
-            <button onclick="window.location.href='cart.html'" class="btn-icon">Cart</button>
-            <button onclick="window.location.href='orders.html'" class="btn-icon">Orders</button>
-            <button onclick="logout()" class="btn-danger-outline">Logout</button>
-        `;
-        checkUserRole(); // Check if we need to show the Dashboard button
+        const decoded = parseJwt(state.token);
+        const role = decoded ? decoded.role : null;
+
+        // --- ROLE BASED NAVIGATION ---
+        if (role === 'RETAILER') {
+            // Retailer View: Dashboard Only (No Cart/Orders)
+            navActions.innerHTML = `
+                <button class="btn-warning" onclick="window.location.href='retailer.html'">Dashboard</button>
+                <button onclick="logout()" class="btn-danger-outline">Logout</button>
+            `;
+        } else {
+            // Customer View: Cart + Orders
+            navActions.innerHTML = `
+                <button onclick="window.location.href='cart.html'" class="btn-icon">Cart</button>
+                <button onclick="window.location.href='orders.html'" class="btn-icon">Orders</button>
+                <button onclick="logout()" class="btn-danger-outline">Logout</button>
+            `;
+        }
     } else {
         // Guest View
         navActions.innerHTML = `
@@ -324,13 +335,26 @@ async function handleProductGridClick(e) {
     const action = btn.dataset.action;
     const id = btn.dataset.id;
     
-    // If action is restricted (like/cart) and user has no token
+    // --- CHECK ROLE ---
+    let role = null;
+    if (state.token) {
+        const decoded = parseJwt(state.token);
+        if (decoded) role = decoded.role;
+    }
+
+    // 1. RETAILER RESTRICTION
+    if (role === 'RETAILER' && (action === 'like' || action === 'add-to-cart')) {
+        showToast("Retailers cannot purchase items. Please login as a Customer.", "warning");
+        return;
+    }
+
+    // 2. GUEST RESTRICTION
     if ((action === 'like' || action === 'add-to-cart') && !state.token) {
         const doLogin = await showConfirm("You need to be logged in to perform this action. Go to login page?");
         if (doLogin) {
             window.location.href = 'login.html';
         }
-        return; // Stop here, don't execute the action
+        return;
     }
 
     if (action === 'like') {
@@ -392,9 +416,16 @@ async function openReviewModal(pid, pname) {
     document.getElementById('modalTitle').textContent = `Reviews: ${pname}`;
     document.getElementById('reviewProductId').value = pid;
     
-    // Hide "Write Review" form for guests
+    // --- HIDE FORM FOR GUESTS & RETAILERS ---
     const formWrapper = document.querySelector('.review-form-wrapper');
-    if (!state.token) {
+    let role = null;
+    if (state.token) {
+        const decoded = parseJwt(state.token);
+        if (decoded) role = decoded.role;
+    }
+
+    // Hide if not logged in OR if user is Retailer
+    if (!state.token || role === 'RETAILER') {
         formWrapper.style.display = 'none';
     } else {
         formWrapper.style.display = 'block';
