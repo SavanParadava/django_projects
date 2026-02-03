@@ -11,91 +11,248 @@
         <h1>Retailer Dashboard</h1>
         <div>
             <button onclick="window.location.href='index.html'" class="btn-outline">Back to Store</button>
-            <button onclick="logout()" class="btn-danger-outline">Logout</button>
+            <button onclick="logout()" class="btn-danger-outline" style="margin-left: 10px;">Logout</button>
         </div>
     </nav>
 
-    <div class="center-wrapper" style="margin-top: 50px;">
-        <div class="form-box" style="max-width: 600px;">
-            <h2>Add New Product</h2>
+    <div class="dashboard-grid">
+        <div class="form-box" style="margin: 0; width: 100%; max-width: 100%;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="margin-bottom: 5px;">Add Product</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Expand your catalog</p>
+            </div>
+            
             <form id="addProductForm">
                 <div class="form-group">
                     <label>Product Name</label>
-                    <input type="text" id="name" required>
+                    <input type="text" id="name" required placeholder="e.g. Wireless Headphones">
                 </div>
-                <div class="form-group">
-                    <label>Price ($)</label>
-                    <input type="number" id="price" step="0.01" required>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Price ($)</label>
+                        <input type="number" id="price" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Stock</label>
+                        <input type="number" id="stock" min="0" required placeholder="0">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Stock Quantity</label>
-                    <input type="number" id="stock" required>
-                </div>
+
                 <div class="form-group">
                     <label>Category</label>
-                    <select id="catId" required>
-                        <option value="" disabled selected>Select Category</option>
-                    </select>
+                    <div class="select-wrapper">
+                        <select id="catId" required>
+                            <option value="" disabled selected>Select Category</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Product Image</label>
+                    <input type="file" id="image" accept="image/*" style="padding: 6px;">
                 </div>
                 
-                <button type="submit" class="btn-block">Add Product</button>
+                <button type="submit" class="btn-primary btn-block" style="margin-top: 20px;">+ Create Product</button>
             </form>
+        </div>
+
+        <div class="form-box" style="margin: 0; width: 100%; max-width: 100%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid var(--border);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <h2 style="margin:0;">Inventory</h2>
+                    <span id="productCountBadge" class="total-badge">0</span>
+                </div>
+                <button onclick="loadMyProducts()" class="btn-icon-small" title="Refresh List">↻ Refresh</button>
+            </div>
+            
+            <div id="myProductsList">
+                <div style="text-align:center; padding: 40px; color: var(--text-muted);">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        // 1. Auth Check
         const token = localStorage.getItem('accessToken');
         if (!token) window.location.href = 'login.html';
 
+        // 2. Load Categories
         async function loadCategories() {
-	    try {
-		// Use authFetch instead of fetch
-		const response = await authFetch(`${API_BASE}/api/store/categories/`);
-		if (response.ok) {
-		    const data = await response.json();
-		    const categories = data.results || data;
-		    const select = document.getElementById('catId');
-		    categories.forEach(cat => {
-		        const option = document.createElement('option');
-		        option.value = cat.id;
-		        option.textContent = cat.name;
-		        select.appendChild(option);
-		    });
-		}
-	    } catch (error) {
-		console.error("Failed to load categories", error);
-	    }
-	}
+            try {
+                const response = await authFetch(`${API_BASE}/api/store/categories/`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const categories = data.results || data;
+                    const select = document.getElementById('catId');
+                    
+                    select.innerHTML = '<option value="" disabled selected>Select Category</option>';
+                    
+                    categories.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat.id;
+                        option.textContent = cat.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to load categories", error);
+            }
+        }
 
-	document.getElementById('addProductForm').addEventListener('submit', async (e) => {
-	    e.preventDefault();
-	    
-	    const data = {
-		name: document.getElementById('name').value,
-		price: parseFloat(document.getElementById('price').value),
-		amount_in_stock: parseInt(document.getElementById('stock').value),
-		category_id: parseInt(document.getElementById('catId').value),
-	    };
+        // 3. Load Products
+        async function loadMyProducts() {
+            const list = document.getElementById('myProductsList');
+            const badge = document.getElementById('productCountBadge');
+            
+            if(list.children.length === 0) {
+                 list.innerHTML = '<div style="text-align:center; padding:40px;"><div class="loading-spinner"></div></div>';
+            }
+            
+            try {
+                const response = await authFetch(`${API_BASE}/api/store/products/my_products/`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const products = data.results || data; 
+                    
+                    badge.textContent = products.length;
+                    list.innerHTML = '';
 
-	    try {
-		// Use authFetch to automatically attach the token
-		const res = await authFetch(`${API_BASE}/api/store/products/`, {
-		    method: 'POST',
-		    headers: { 'Content-Type': 'application/json' },
-		    body: JSON.stringify(data)
-		});
-		
-		if (res.ok) {
-		    showToast("Product Added!","success");
-		    window.location.href = 'index.html';
-		} else {
-		    const err = await res.json();
-		    showToast("Error: " + JSON.stringify(err),"error");
-		}
-	    } catch (e) { console.error(e); }
-	});
+                    if (products.length === 0) {
+                        list.innerHTML = `
+                            <div style="text-align:center; padding:40px; color:var(--text-muted);">
+                                <p style="font-size:1.5rem; margin-bottom:10px;">📦</p>
+                                <p>You haven't added any products yet.</p>
+                            </div>`;
+                        return;
+                    }
 
-	loadCategories();
+                    products.forEach(p => {
+                        // Stock Logic
+                        const isStocked = p.amount_in_stock > 0;
+                        const stockText = isStocked ? 'In Stock' : 'Out of Stock';
+                        const stockBg = isStocked ? '#dcfce7' : '#fee2e2';
+                        const stockColor = isStocked ? '#166534' : '#991b1b';
+
+                        // Image Logic
+                        let imgUrl = `${API_BASE}/media/products/dummy.jpg`;
+                        if (p.image) {
+                            if (p.image.startsWith('http')) {
+                                imgUrl = p.image;
+                            } else if (p.image.startsWith('/media/')) {
+                                imgUrl = `${API_BASE}${p.image}`;
+                            } else {
+                                imgUrl = `${API_BASE}/media/${p.image}`;
+                            }
+                        }
+
+                        const div = document.createElement('div');
+                        div.className = 'product-item';
+                        div.innerHTML = `
+                            <div class="item-content">
+                                <img src="${imgUrl}" class="item-thumbnail" alt="${p.name}">
+                                <div class="item-info">
+                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                                        <h4>${p.name}</h4>
+                                        <span class="status-pill" style="background:${stockBg}; color:${stockColor};">${stockText}</span>
+                                    </div>
+                                    <div class="item-meta">
+                                        <span>$${p.price.toFixed(2)}</span>
+                                        <span style="color:#cbd5e1;">|</span>
+                                        <span>Qty: ${p.amount_in_stock}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onclick="deleteProduct(${p.id})" class="btn-danger-outline" style="padding: 6px 12px; font-size:0.8rem;">
+                                Delete
+                            </button>
+                        `;
+                        list.appendChild(div);
+                    });
+                } else {
+                    list.innerHTML = '<p style="color:var(--danger); text-align:center;">Failed to load inventory.</p>';
+                }
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = '<p style="color:var(--danger); text-align:center;">Connection error.</p>';
+            }
+        }
+
+        // 4. Delete Product
+        async function deleteProduct(id) {
+            if (!confirm("Are you sure you want to permanently delete this product?")) return;
+
+            try {
+                const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    showToast("Product deleted", "success");
+                    loadMyProducts(); 
+                } else {
+                    showToast("Failed to delete product", "error");
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Connection error", "error");
+            }
+        }
+
+        // 5. Add Product Form Handler (Updated for File Upload)
+        document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Creating...";
+
+            // Use FormData to handle file uploads
+            const formData = new FormData();
+            formData.append('name', document.getElementById('name').value);
+            formData.append('price', document.getElementById('price').value);
+            formData.append('amount_in_stock', document.getElementById('stock').value);
+            formData.append('category_id', document.getElementById('catId').value);
+
+            // Check if file is selected
+            const fileInput = document.getElementById('image');
+            if (fileInput.files[0]) {
+                formData.append('image', fileInput.files[0]);
+            }
+
+            try {
+                // Note: Do NOT set 'Content-Type' header when sending FormData.
+                // The browser will automatically set it with the correct boundary.
+                const res = await authFetch(`${API_BASE}/api/store/products/`, {
+                    method: 'POST',
+                    body: formData 
+                });
+                
+                if (res.ok) {
+                    showToast("Product added to inventory", "success");
+                    document.getElementById('addProductForm').reset(); 
+                    loadMyProducts(); 
+                } else {
+                    const err = await res.json();
+                    let msg = "Failed to add product";
+                    if(err.detail) msg = err.detail;
+                    else if(typeof err === 'object') msg = Object.values(err).flat().join(', ');
+                    showToast(msg, "error");
+                }
+            } catch (e) { 
+                console.error(e);
+                showToast("Connection error", "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+
+        // Initialize
+        loadCategories();
+        loadMyProducts();
     </script>
 </body>
 </html>
