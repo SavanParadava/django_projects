@@ -50,8 +50,8 @@ class CustomerRegistration(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class RetailerRegistration(APIView):
-    authentication_classes=[JWTAuthentication]
-    permission_classes=[IsAuthenticated,IsAdmin]
+    # authentication_classes=[JWTAuthentication]
+    # permission_classes=[IsAuthenticated,IsAdmin]
     def post(self, request, *args, **kwargs):
         request.data['role']='RETAILER'
         serializer = CustomUserSerializer(data=request.data)
