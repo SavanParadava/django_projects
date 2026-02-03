@@ -41,6 +41,19 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer.save(retailer=store_user)
 
     @action(detail=False, methods=['get'])
+    def my_products(self, request):
+        store_user = get_object_or_404(StoreUser, original_user_id=request.user.id)
+        products = Product.objects.filter(retailer=store_user).order_by('-created_at')
+        
+        page = self.paginate_queryset(products)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
+
+
+    @action(detail=False, methods=['get'])
     def filter_products(self, request):
         num = request.query_params.get('num', 9)
         self.paginator.page_size = int(num)
