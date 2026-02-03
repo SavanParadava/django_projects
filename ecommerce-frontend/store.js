@@ -323,6 +323,15 @@ async function handleProductGridClick(e) {
 
     const action = btn.dataset.action;
     const id = btn.dataset.id;
+    
+    // If action is restricted (like/cart) and user has no token
+    if ((action === 'like' || action === 'add-to-cart') && !state.token) {
+        const doLogin = await showConfirm("You need to be logged in to perform this action. Go to login page?");
+        if (doLogin) {
+            window.location.href = 'login.html';
+        }
+        return; // Stop here, don't execute the action
+    }
 
     if (action === 'like') {
         toggleLike(id, btn);
@@ -383,20 +392,31 @@ async function openReviewModal(pid, pname) {
     document.getElementById('modalTitle').textContent = `Reviews: ${pname}`;
     document.getElementById('reviewProductId').value = pid;
     
+    // Hide "Write Review" form for guests
+    const formWrapper = document.querySelector('.review-form-wrapper');
+    if (!state.token) {
+        formWrapper.style.display = 'none';
+    } else {
+        formWrapper.style.display = 'block';
+    }
+
     const list = document.getElementById('reviewList');
     list.innerHTML = '<div class="loading-spinner"></div>';
 
     try {
-        const [allReviewsRes, myReviewRes] = await Promise.all([
-            //fetch(`${API_BASE}/api/store/reviews/?product_id=${pid}`),
-            fetch(`${API_BASE}/api/store/reviews/?product_id=${pid}`, {
-    method: "GET",
-    headers: {
-        "ngrok-skip-browser-warning": "true",
-    },
-}),
-            authFetch(`${API_BASE}/api/store/user_review/${pid}/`).catch(e => null)
-        ]);
+        // 1. Always fetch public reviews
+        const p1 = fetch(`${API_BASE}/api/store/reviews/?product_id=${pid}`, {
+            method: "GET",
+            headers: { "ngrok-skip-browser-warning": "true" },
+        });
+
+        // 2. Only fetch user review if logged in (avoid 401 redirect)
+        let p2 = Promise.resolve(null);
+        if (state.token) {
+            p2 = authFetch(`${API_BASE}/api/store/user_review/${pid}/`).catch(e => null);
+        }
+
+        const [allReviewsRes, myReviewRes] = await Promise.all([p1, p2]);
 
         const allReviewsData = await allReviewsRes.json();
         let allReviews = allReviewsData.results || allReviewsData;
@@ -414,7 +434,7 @@ async function openReviewModal(pid, pname) {
         }
 
         if (allReviews.length === 0 && !myReview) {
-            list.innerHTML = '<div class="empty-state">No reviews yet. Be the first!</div>';
+            list.innerHTML = '<div class="empty-state">No reviews yet.</div>';
         } else {
             allReviews.forEach(renderOtherReview);
         }
