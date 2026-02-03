@@ -13,20 +13,45 @@ let state = {
 };
 
 // Check Auth on Load
-if (!state.token) window.location.href = 'login.html';
+// if (!state.token) window.location.href = 'login.html';
 
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
+    updateNavState(); // New function to handle Login/Logout buttons
     await fetchCategories();
-    await fetchUserLikes();
-    checkUserRole();
+    
+    // Only fetch user-specific data if logged in
+    if (state.token) {
+        await fetchUserLikes();
+    }
     
     // Initial Load
     applyFilters();
 
     // Event Listeners for Static Elements
     setupEventListeners();
+}
+
+function updateNavState() {
+    const navActions = document.querySelector('.nav-actions');
+    
+    if (state.token) {
+        // Logged In View
+        navActions.innerHTML = `
+            <button id="retailerLink" class="btn-warning hidden" onclick="window.location.href='retailer.html'">Dashboard</button>
+            <button onclick="window.location.href='cart.html'" class="btn-icon">Cart</button>
+            <button onclick="window.location.href='orders.html'" class="btn-icon">Orders</button>
+            <button onclick="logout()" class="btn-danger-outline">Logout</button>
+        `;
+        checkUserRole(); // Check if we need to show the Dashboard button
+    } else {
+        // Guest View
+        navActions.innerHTML = `
+            <button onclick="window.location.href='login.html'" class="btn-primary">Login</button>
+            <button onclick="window.location.href='register.html'" class="btn-outline">Sign Up</button>
+        `;
+    }
 }
 
 function setupEventListeners() {
