@@ -22,6 +22,18 @@
                         <option value="RETAILER">Retailer (I want to sell)</option>
                     </select>
                 </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>First Name</label>
+                        <input type="text" id="firstName" placeholder="John">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Last Name</label>
+                        <input type="text" id="lastName" placeholder="Doe">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Email Address</label>
                     <input type="email" id="email" required placeholder="name@example.com">
@@ -44,7 +56,6 @@
                 <div class="link-text">
                     Already have an account? <a href="login.html">Login</a>
                 </div>
-                
                 <div style="text-align: center; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
                     <a href="index.html" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">&larr; Back to Store</a>
                 </div>
@@ -61,13 +72,14 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
 
             if (password !== confirmPassword) {
                 showToast("Passwords do not match!", "error");
                 return;
             }
 
-            // Select endpoint based on role
             const endpoint = role === 'RETAILER' 
                 ? `${API_BASE}/api/users/register-retailer/` 
                 : `${API_BASE}/api/users/register-customer/`;
@@ -76,7 +88,13 @@
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, username, password })
+                    body: JSON.stringify({ 
+                        email, 
+                        username, 
+                        password,
+                        first_name: firstName,
+                        last_name: lastName
+                    })
                 });
 
                 if (await checkRateLimit(response)) return;
@@ -84,22 +102,21 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    showToast(data.message,"success");
+                    showToast(data.message, "success");
                     localStorage.setItem('emailForVerification', email);
                     setTimeout(() => window.location.href = 'verify.html', 1000);
                 } else {
                     let msg = "Registration Failed";
                     if (data.detail) msg = data.detail;
                     else if (data.email) msg = "Email: " + data.email[0];
-                    else if (data.username) msg = "username: " + data.username[0];
-                    else if (data.password) msg = "Password: " + data.password[0];
+                    else if (data.username) msg = "Username: " + data.username[0];
                     else msg += ": " + JSON.stringify(data);
                     
-                    showToast(msg,"error");
+                    showToast(msg, "error");
                 }
             } catch (error) {
                 console.error(error);
-                showToast("Connection error.","error");
+                showToast("Connection error.", "error");
             }
         });
     </script>

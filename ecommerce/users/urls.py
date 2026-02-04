@@ -6,5 +6,7 @@ urlpatterns = [
     path('register-retailer/', RetailerRegistration.as_view(), name='register-retailer'),
     path('verify/', VerifyOTP.as_view(), name='verify'),
     path('forgot-password/', RequestPasswordReset.as_view(), name='request-password-reset'),
-    path('password-reset/<str:token>/', ResetPassword.as_view(), name='password-reset-confirm')
+    path('password-reset/<str:token>/', ResetPassword.as_view(), name='password-reset-confirm'),
+    path('profile/', UserProfile.as_view(), name='user-profile'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
 ]

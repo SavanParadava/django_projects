@@ -50,8 +50,8 @@ class CustomerRegistration(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class RetailerRegistration(APIView):
-    # authentication_classes=[JWTAuthentication]
-    # permission_classes=[IsAuthenticated,IsAdmin]
+#    authentication_classes=[JWTAuthentication]
+#    permission_classes=[IsAuthenticated,IsAdmin]
     def post(self, request, *args, **kwargs):
         request.data['role']='RETAILER'
         serializer = CustomUserSerializer(data=request.data)
@@ -115,6 +115,7 @@ class ResetPassword(generics.GenericAPIView):
         
         if user:
             user.set_password(serializer.validated_data['new_password'])
+            user.is_verified=True
             user.save()
             
             PasswordReset.objects.filter(email=reset_obj.email).delete()
@@ -125,3 +126,23 @@ class ResetPassword(generics.GenericAPIView):
             {'error': 'User not found'}, 
             status=status.HTTP_404_NOT_FOUND
         )
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            user.set_password(serializer.validated_data["new_password"])
+            user.save()
+            return Response({'message': 'Password changed successfully'},status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+            
+
+class UserProfile(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CustomUserSerializer
+
+    def get_object(self):
+        return self.request.user
