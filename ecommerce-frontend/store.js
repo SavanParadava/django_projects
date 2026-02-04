@@ -46,7 +46,15 @@ function updateNavState() {
         const logoutBtn = `<button onclick="logout()" class="btn-danger-outline">Logout</button>`;
 
         // --- ROLE BASED NAVIGATION ---
-        if (role === 'RETAILER') {
+        if (role === 'ADMIN') {
+            // Retailer View
+            navActions.innerHTML = `
+                <button class="btn-warning" onclick="window.location.href='register.html'">Add Retailer</button>
+                ${profileBtn}
+                ${logoutBtn}
+            `;
+        }
+        else if (role === 'RETAILER') {
             // Retailer View
             navActions.innerHTML = `
                 <button class="btn-warning" onclick="window.location.href='retailer.html'">Dashboard</button>

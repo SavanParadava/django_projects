@@ -74,6 +74,22 @@
             const confirmPassword = document.getElementById('confirmPassword').value;
             const firstName = document.getElementById('firstName').value;
             const lastName = document.getElementById('lastName').value;
+            
+            // Admin Permission Check for Retailers ---
+            if (role === 'RETAILER') {
+                const token = localStorage.getItem('accessToken');
+                if (!token) {
+                    showToast("You must be logged in as an Admin to register a Retailer.", "error");
+                    return;
+                }
+                
+                // Decode token to check role (Assumes parseJwt is in utils.js)
+                const decoded = parseJwt(token);
+                if (!decoded || decoded.role !== 'ADMIN') {
+                    showToast("Permission Denied: Only Admins can create Retailer accounts.", "error");
+                    return;
+                }
+            }
 
             if (password !== confirmPassword) {
                 showToast("Passwords do not match!", "error");
@@ -83,19 +99,33 @@
             const endpoint = role === 'RETAILER' 
                 ? `${API_BASE}/api/users/register-retailer/` 
                 : `${API_BASE}/api/users/register-customer/`;
+               
+            const payload = { 
+                email, 
+                username, 
+                password,
+                first_name: firstName,
+                last_name: lastName
+            };
 
             try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        email, 
-                        username, 
-                        password,
-                        first_name: firstName,
-                        last_name: lastName
-                    })
-                });
+                let response;
+
+                // Use authFetch for Retailer (sends Admin Token) ---
+                if (role === 'RETAILER') {
+                    response = await authFetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    // Public fetch for Customers
+                    response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
 
                 if (await checkRateLimit(response)) return;
 
