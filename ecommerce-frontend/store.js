@@ -368,8 +368,14 @@ async function handleProductGridClick(e) {
         showToast("Retailers cannot purchase items. Please login as a Customer.", "warning");
         return;
     }
+    
+    // 2. ADMIN RESTRICTION
+    if (role === 'ADMIN' && (action === 'like' || action === 'add-to-cart')) {
+        showToast("ADMIN cannot purchase items. Please login as a Customer.", "warning");
+        return;
+    }
 
-    // 2. GUEST RESTRICTION
+    // 3. GUEST RESTRICTION
     if ((action === 'like' || action === 'add-to-cart') && !state.token) {
         const doLogin = await showConfirm("You need to be logged in to perform this action. Go to login page?");
         if (doLogin) {
@@ -448,7 +454,7 @@ async function openReviewModal(pid, pname) {
         if (decoded) role = decoded.role;
     }
 
-    if (!state.token || role === 'RETAILER') {
+    if (!state.token || role === 'RETAILER' || role === 'ADMIN') {
         if(formWrapper) formWrapper.style.display = 'none';
     } else {
         if(formWrapper) formWrapper.style.display = 'block';
