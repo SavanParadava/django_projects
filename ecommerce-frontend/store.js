@@ -41,19 +41,25 @@ function updateNavState() {
         const decoded = parseJwt(state.token);
         const role = decoded ? decoded.role : null;
 
+        // Common buttons for both roles
+        const profileBtn = `<button onclick="window.location.href='profile.html'" class="btn-icon">Profile</button>`;
+        const logoutBtn = `<button onclick="logout()" class="btn-danger-outline">Logout</button>`;
+
         // --- ROLE BASED NAVIGATION ---
         if (role === 'RETAILER') {
-            // Retailer View: Dashboard Only (No Cart/Orders)
+            // Retailer View
             navActions.innerHTML = `
                 <button class="btn-warning" onclick="window.location.href='retailer.html'">Dashboard</button>
-                <button onclick="logout()" class="btn-danger-outline">Logout</button>
+                ${profileBtn}
+                ${logoutBtn}
             `;
         } else {
-            // Customer View: Cart + Orders
+            // Customer View
             navActions.innerHTML = `
                 <button onclick="window.location.href='cart.html'" class="btn-icon">Cart</button>
                 <button onclick="window.location.href='orders.html'" class="btn-icon">Orders</button>
-                <button onclick="logout()" class="btn-danger-outline">Logout</button>
+                ${profileBtn}
+                ${logoutBtn}
             `;
         }
     } else {
@@ -64,7 +70,6 @@ function updateNavState() {
         `;
     }
 }
-
 function setupEventListeners() {
     // Search Input Debounce
     const searchInput = document.getElementById('searchInput');
@@ -97,6 +102,14 @@ function setupEventListeners() {
 
     // Review Form
     document.getElementById('reviewForm').addEventListener('submit', handleReviewSubmit);
+    
+    // Clicking outsie will close the review box
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('reviewModal');
+        if (e.target === modal) {
+	    closeReviewModal();
+        }
+    });
 }
 
 // --- Role Management ---
@@ -260,7 +273,7 @@ function updateResultsInfo(data) {
 
     resultsDiv.innerHTML = `
         <span>Showing <strong>${currentCount}</strong> results (Filtered from <strong>${filteredTotal}</strong> matches)</span>
-        <span class="total-badge">Total Products: ${totalActive}</span>
+        <span class="total-badge">Total Active Products: ${totalActive}</span>
     `;
 }
 
@@ -416,32 +429,29 @@ async function openReviewModal(pid, pname) {
     document.getElementById('modalTitle').textContent = `Reviews: ${pname}`;
     document.getElementById('reviewProductId').value = pid;
     
-    // --- HIDE FORM FOR GUESTS & RETAILERS ---
     const formWrapper = document.querySelector('.review-form-wrapper');
+    const list = document.getElementById('reviewList');
+    list.innerHTML = '<div class="loading-spinner"></div>';
+
+    // Default: Show form if logged in & not retailer (we'll hide it later if review exists)
     let role = null;
     if (state.token) {
         const decoded = parseJwt(state.token);
         if (decoded) role = decoded.role;
     }
 
-    // Hide if not logged in OR if user is Retailer
     if (!state.token || role === 'RETAILER') {
-        formWrapper.style.display = 'none';
+        if(formWrapper) formWrapper.style.display = 'none';
     } else {
-        formWrapper.style.display = 'block';
+        if(formWrapper) formWrapper.style.display = 'block';
     }
 
-    const list = document.getElementById('reviewList');
-    list.innerHTML = '<div class="loading-spinner"></div>';
-
     try {
-        // 1. Always fetch public reviews
         const p1 = fetch(`${API_BASE}/api/store/reviews/?product_id=${pid}`, {
             method: "GET",
             headers: { "ngrok-skip-browser-warning": "true" },
         });
 
-        // 2. Only fetch user review if logged in (avoid 401 redirect)
         let p2 = Promise.resolve(null);
         if (state.token) {
             p2 = authFetch(`${API_BASE}/api/store/user_review/${pid}/`).catch(e => null);
@@ -459,9 +469,13 @@ async function openReviewModal(pid, pname) {
 
         list.innerHTML = '';
 
+        // --- NEW LOGIC: If I have a review, hide the input form ---
         if (myReview) {
             renderMyReview(myReview, pid);
             allReviews = allReviews.filter(r => r.id !== myReview.id);
+            
+            // Hide the "Write Review" form because user already has one
+            if(formWrapper) formWrapper.style.display = 'none';
         }
 
         if (allReviews.length === 0 && !myReview) {
@@ -510,14 +524,21 @@ function renderOtherReview(review) {
     list.appendChild(d);
 }
 
-// Global scope for HTML onclicks inside modal (optional: could be delegated too)
+
 window.editReview = function(id, rating, comment) {
+    // Show the form wrapper in case it was hidden
+    const formWrapper = document.querySelector('.review-form-wrapper');
+    if(formWrapper) formWrapper.style.display = 'block';
+
     document.getElementById('reviewFormTitle').textContent = "Edit Your Review";
     document.getElementById('editingReviewId').value = id; 
     document.getElementById('reviewRating').value = rating;
     document.getElementById('reviewComment').value = comment;
     document.getElementById('reviewSubmitBtn').textContent = "Update Review";
     document.getElementById('cancelEditBtn').style.display = 'block';
+    
+    // Optional: Scroll to top of modal to see form
+    document.getElementById('reviewModal').querySelector('.modal-content').scrollTop = 0;
 }
 
 window.resetReviewForm = function() {

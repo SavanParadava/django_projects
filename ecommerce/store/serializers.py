@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.db.models import F
+from django.db import transaction
 from rest_framework import serializers
 from .models import *
 
@@ -35,7 +36,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'price', 'amount_in_stock', 'category_id', 'category', 'retailer_id', 'image', 'retailer']
-
+    
     def validate_price(self, value):
         if value < 0:
             raise serializers.ValidationError("Price cannot be negative.")
@@ -80,6 +81,22 @@ class CartSerializer(serializers.ModelSerializer):
 
     def validate_user(self, value):
         return get_object_or_404(StoreUser,original_user_id=value.id)
+    
+    def create(self, validated_data):
+        quantity = validated_data.pop('quantity')
+        with transaction.atomic():
+            matching_cart_items = Cart.objects.select_for_update().filter(**validated_data)
+            
+            if matching_cart_items.exists():
+                item = matching_cart_items.first()
+                item.quantity += 1
+                item.save()
+                return item
+            
+            validated_data["quantity"]=1
+            cart_item = Cart.objects.create(**validated_data)
+            print(cart_item)
+            return cart_item
     
 class LikedProductSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(

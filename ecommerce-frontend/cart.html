@@ -19,7 +19,7 @@
     <nav>
         <h1>Shopping Cart</h1>
         <div>
-            <button onclick="window.location.href='index.html'" class="btn-outline">Continue Shopping</button>
+            <button onclick="window.location.href='index.html'" class="btn-icon">Continue Shopping</button>
             <button onclick="logout()" class="btn-danger-outline">Logout</button>
         </div>
     </nav>
@@ -123,7 +123,8 @@
 
         async function updateQuantity(pid, newQty) {
             if (newQty < 1) {
-                if(confirm("Remove item?")) removeItem(pid);
+            	const confirmed = await showConfirm("Remove item?");
+    		if (confirmed) removeItem(pid);
                 return;
             }
             const res = await authFetch(`${API_BASE}/api/store/cart/${pid}/`, { 

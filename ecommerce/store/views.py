@@ -24,10 +24,12 @@ class CategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all().order_by('-id')
     serializer_class = ProductSerializer
     authentication_classes = [JWTAuthentication]
     pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        return Product.objects.filter(is_active=True)
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -39,7 +41,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         store_user = get_object_or_404(StoreUser, original_user_id=self.request.user.id)
         serializer.save(retailer=store_user)
-
+    
     @action(detail=False, methods=['get'])
     def my_products(self, request):
         store_user = get_object_or_404(StoreUser, original_user_id=request.user.id)
@@ -49,9 +51,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
+
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
-
 
     @action(detail=False, methods=['get'])
     def filter_products(self, request):
@@ -66,17 +68,18 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         try:
             products = self.get_queryset()
+            total_active_products = products.count()
             
             if max_price:
-                products = products.filter(price__lte=float(max_price), is_active=True)
+                products = products.filter(price__lte=float(max_price))
             if min_price:
-                products = products.filter(price__gte=float(min_price), is_active=True)
+                products = products.filter(price__gte=float(min_price))
             if category_id:
-                products = products.filter(category=category_id, is_active=True)
+                products = products.filter(category=category_id)
             if search_text:
-                products = products.filter(name__icontains=search_text, is_active=True)
+                products = products.filter(name__icontains=search_text)
             if retailer_id:
-                products = products.filter(retailer=retailer_id, is_active=True)
+                products = products.filter(retailer=retailer_id)
             if sort_by_price=="1":
                 products = products.order_by('price')
             elif sort_by_price=="-1":
@@ -87,7 +90,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             page = self.paginate_queryset(products)
             serializer = ProductSerializer(page, many=True)
             response = self.get_paginated_response(serializer.data)
-            response.data['total_active_products'] = Product.objects.filter(is_active=True).count()            
+            response.data['total_active_products'] = total_active_products
             return response
             
         except Exception as e:
@@ -179,7 +182,6 @@ class CartViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 class LikedProductViewSet(viewsets.ModelViewSet):
-    queryset = LikedProduct.objects.all()
     serializer_class = LikedProductSerializer
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated,IsCustomer]

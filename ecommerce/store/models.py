@@ -43,7 +43,6 @@ class Cart(models.Model):
 
     class Meta:
         constraints = [
-            UniqueConstraint(fields=['user', 'product'], name='unique_cart_item'),
             CheckConstraint(condition=Q(quantity__gte=1), name='quantity_at_least_one')
         ]
 

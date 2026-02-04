@@ -6,12 +6,13 @@ from django.contrib.auth.password_validation import validate_password
 class CustomUserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True,
+                                     required=False,
                                      validators=[validate_password])
     role = serializers.ChoiceField(choices=['ADMIN', 'RETAILER', 'CUSTOMER'],
                                    default='CUSTOMER')
     class Meta:
         model = CustomUser
-        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'role','is_verified', 'otp')
+        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'role', 'is_verified', 'otp')
     
     def create(self, validated_data):
         password = validated_data.pop("password")
@@ -19,16 +20,34 @@ class CustomUserSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+    
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password",None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
     def validate_email(self, value):
         lower_email = value.lower()
-        if CustomUser.objects.filter(email__iexact=lower_email).exists():
-            raise serializers.ValidationError("Duplicate Email Already exist")
+        # If update
+        query = CustomUser.objects.filter(email__iexact=lower_email)
+        if self.instance:
+            query = query.exclude(pk=self.instance.pk)
+        
+        if query.exists():
+            raise serializers.ValidationError("Duplicate Email Already exists")
         return lower_email
     
     def validate_username(self, value):
-        if CustomUser.objects.filter(username=value).exists():
-            raise serializers.ValidationError("Duplicate Username Already exist")
+        query = CustomUser.objects.filter(username=value)
+        if self.instance:
+            query = query.exclude(pk=self.instance.pk)
+            
+        if query.exists():
+            raise serializers.ValidationError("Duplicate Username Already exists")
         return value
 
 class ResetPasswordRequestSerializer(serializers.Serializer):
