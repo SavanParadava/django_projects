@@ -1,0 +1,13 @@
+dump OLD DBs:
+python manage.py dumpdata --database=default --exclude auth.permission --exclude contenttypes --exclude admin.logentry > default_data.json
+python manage.py dumpdata --database=store_db --exclude auth.permission --exclude contenttypes --exclude admin.logentry > store_data.json
+
+ALSO Disable Signals.py
+
+New Project:
+python manage.py migrate --database=default
+python manage.py migrate --database=store_db
+
+load old DBS:
+python manage.py loaddata default_data.json --database=default
+python manage.py loaddata store_data.json --database=store_db
