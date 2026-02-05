@@ -88,7 +88,18 @@
                 const itemTotal = item.quantity * item.product.price;
                 total += itemTotal;
                 const pid = item.product.id; 
-                const img = item.product.image || 'placeholder.jpg';
+                // const img = item.product.image || 'placeholder.jpg';
+                let imgUrl = `${API_BASE}/media/products/dummy.jpg`;
+
+		if (item.product.image) {
+		    if (item.product.image.startsWith('http')) {
+			imgUrl = item.product.image;
+		    } else if (item.product.image.startsWith('/media/')) {
+			imgUrl = `${API_BASE}${item.product.image}`;
+		    } else {
+			imgUrl = `${API_BASE}/media/${item.product.image}`;
+		    }
+		}
 
                 const div = document.createElement('div');
                 div.className = 'product-card';
@@ -99,7 +110,7 @@
 
                 div.innerHTML = `
                     <div style="display:flex; gap:15px; align-items:center;">
-                        <img src="${img}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
+                        <img src="${imgUrl}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
                         <div>
                             <h3 style="margin:0;">${item.product.name}</h3>
                             <p class="price" style="font-size:1rem; margin:5px 0;">$${item.product.price}</p>
@@ -112,7 +123,7 @@
                             <button class="qty-btn" onclick="updateQuantity(${pid}, ${item.quantity + 1})">+</button>
                         </div>
                         <b style="color:var(--success); min-width:80px; text-align:right;">$${itemTotal.toFixed(2)}</b>
-                        <button onclick="removeItem(${pid})" style="background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Remove</button>
+                        <button onclick="removeItem(${pid})" style="background:var(--accent); color:black; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Remove</button>
                     </div>
                 `;
                 container.appendChild(div);
@@ -133,6 +144,15 @@
                 body: JSON.stringify({ quantity: newQty })
             });
             if (res.ok) fetchCart();
+            else { const errorData = await res.json();
+
+			if (errorData.quantity) {
+			    showToast(errorData.quantity[0]);
+			} else {
+			    showToast("Something went wrong");
+			}
+		fetchCart();
+		}
         }
 
         async function removeItem(pid) {
@@ -246,7 +266,7 @@
             const data = await res.json();
 
             if (!res.ok) {
-                alert(data.detail || "Checkout failed");
+                alert(data || "Checkout failed");
                 return;
             }
 

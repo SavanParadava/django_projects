@@ -430,7 +430,15 @@ async function addToCart(id) {
         const res = await authFetch(`${API_BASE}/api/store/cart/`, { method: 'POST', headers: {'Content-Type': 'application/json' }, body: JSON.stringify({ product_id: id, quantity: 1 }) });
         if (await checkRateLimit(res)) return;
         if (res.ok) showToast("Added to cart!","success");
-        else { const d = await res.json(); showToast(d.detail || "Failed to add to cart","error"); }
+        else { 
+        	const errorData = await res.json();
+
+		if (errorData.quantity) {
+		    showToast(errorData.quantity[0]);
+		} else {
+		    showToast("Something went wrong");
+		}
+	}
     } catch (e) { console.error(e); }
 }
 
