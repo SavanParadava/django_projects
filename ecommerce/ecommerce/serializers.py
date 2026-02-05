@@ -6,7 +6,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
 
         if not user.is_verified:
-            raise AuthenticationFailed("user is not verified")
+            raise AuthenticationFailed("User is not verified. Try Forgot Password to verify")
 
         token = super().get_token(user)
         token['role'] = user.role
