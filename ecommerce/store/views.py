@@ -112,19 +112,46 @@ class CartViewSet(viewsets.ModelViewSet):
         return Cart.objects.filter(user_id=self.request.user.id)
     
     def perform_update(self, serializer):
-        quantity = serializer.validated_data.get('quantity')
+        product = serializer.instance.product
 
-        if quantity is not None and quantity <= 0:
+        quantity = serializer.validated_data['quantity']
+
+        if product.amount_in_stock < quantity:
+            raise ValidationError({
+                "quantity": [
+                    f"Only {product.amount_in_stock} items left in stock."
+                ]
+            })
+        elif quantity <= 0:
             serializer.instance.delete()
         else:
             serializer.save()
 
     def perform_create(self, serializer):
-        quantity = serializer.validated_data.get('quantity')
-        if quantity is not None and quantity <= 0:
-            raise ValidationError({"quantity": "Quantity cannot be zero or negative."})
-        else:
-            serializer.save()
+        product = serializer.validated_data['product']
+
+        quantity = serializer.validated_data['quantity']
+        x = Cart.objects.filter(user_id=self.request.user.id, product_id=product.id)
+        cart_quantity = x[0].quantity if x else 0
+
+        total_quantity = quantity + cart_quantity
+
+        if product.amount_in_stock == 0:
+                raise ValidationError({
+                "quantity": [
+                    f"Item is out of stock"
+                ]
+            })
+        
+        if product.amount_in_stock < total_quantity:
+            raise ValidationError({
+                "quantity": [
+                    f"Only {product.amount_in_stock} items left in stock."
+                ]
+            })
+
+        serializer.save()
+
     
     @action(detail=False, methods=['post'])
     def checkout(self, request):
@@ -155,11 +182,6 @@ class CartViewSet(viewsets.ModelViewSet):
                         )
                 for item in cart_items:
                     product = Product.objects.select_for_update().get(pk=item.product.pk)
-                    
-                    if product.amount_in_stock < item.quantity:
-                        raise ValidationError(
-                            f"Insufficient stock for '{product.name}'. Available: {product.amount_in_stock}, Requested: {item.quantity}"
-                        )
                     
                     product.amount_in_stock -= item.quantity
                     product.save()

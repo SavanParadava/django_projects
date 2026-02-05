@@ -45,9 +45,20 @@ class CustomerRegistration(APIView):
 
             send_otp_email(user.email, otp)
 
-            return Response({'message': 'User registered successfully. OTP sent to your email.'}, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Customer registered successfully. OTP sent to your email.'}, status=status.HTTP_201_CREATED)
+        
+        is_duplicate = False
+        for field, errors in serializer.errors.items():
+            for error in errors:
+                if getattr(error, 'code', '') == 'unique':
+                    is_duplicate = True
+                    break
+            if is_duplicate:
+                break
+        
+        final_status = status.HTTP_409_CONFLICT if is_duplicate else status.HTTP_400_BAD_REQUEST
+        
+        return Response(serializer.errors, status=final_status)
 
 class RetailerRegistration(APIView):
     authentication_classes=[JWTAuthentication]
@@ -65,9 +76,20 @@ class RetailerRegistration(APIView):
 
             send_otp_email(user.email, otp)
 
-            return Response({'message': 'User registered successfully. OTP sent to your email.'}, status=status.HTTP_201_CREATED)
+            return Response({'message': 'Retailer registered successfully. OTP sent to your email.'}, status=status.HTTP_201_CREATED)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        is_duplicate = False
+        for field, errors in serializer.errors.items():
+            for error in errors:
+                if getattr(error, 'code', '') == 'unique':
+                    is_duplicate = True
+                    break
+            if is_duplicate:
+                break
+        
+        final_status = status.HTTP_409_CONFLICT if is_duplicate else status.HTTP_400_BAD_REQUEST
+        
+        return Response(serializer.errors, status=final_status)
 
 class RequestPasswordReset(generics.GenericAPIView):
     permission_classes = [AllowAny]

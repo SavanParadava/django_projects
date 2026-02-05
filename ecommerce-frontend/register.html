@@ -142,6 +142,11 @@
                     else if (data.username) msg = "Username: " + data.username[0];
                     else msg += ": " + JSON.stringify(data);
                     
+                    if (response.status === 409) {
+			// 409 specifically means Conflict/Duplicate
+			showToast("Account already exists. Try 'Forgot Password'.", "error");
+			return;
+		    }
                     showToast(msg, "error");
                 }
             } catch (error) {

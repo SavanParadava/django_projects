@@ -46,6 +46,22 @@ class ProductSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Stock cannot be zero or negative.")
         return value
+    
+    def create(self, validated_data):
+        amount_in_stock = validated_data.pop('amount_in_stock')
+        with transaction.atomic():
+            matching_Product_items = Product.objects.select_for_update().filter(**validated_data)
+            
+            if matching_Product_items.exists():
+                item = matching_Product_items.first()
+                item.amount_in_stock += amount_in_stock
+                item.save()
+                return item
+            
+            validated_data["amount_in_stock"] = amount_in_stock
+            Product_item = Product.objects.create(**validated_data)
+            print(Product_item)
+            return Product_item
 
 class OrderSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
@@ -73,7 +89,7 @@ class CartSerializer(serializers.ModelSerializer):
         
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
     product = ProductSerializer(read_only=True)
-
+    quantity = serializers.IntegerField(required=True)
 
     class Meta:
         model = Cart
@@ -89,11 +105,11 @@ class CartSerializer(serializers.ModelSerializer):
             
             if matching_cart_items.exists():
                 item = matching_cart_items.first()
-                item.quantity += 1
+                item.quantity += quantity
                 item.save()
                 return item
             
-            validated_data["quantity"]=1
+            validated_data["quantity"] = quantity
             cart_item = Cart.objects.create(**validated_data)
             print(cart_item)
             return cart_item
