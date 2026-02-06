@@ -135,7 +135,13 @@
                         const stockText = isStocked ? 'In Stock' : 'Out of Stock';
                         const stockBg = isStocked ? '#dcfce7' : '#fee2e2';
                         const stockColor = isStocked ? '#166534' : '#991b1b';
-
+                        
+                        // Is Active logic
+                        const isActive = p.is_active ;
+                        const isActiveText = isActive ? 'Active' : 'Delisted';
+                        const isActiveBg = isActive ? '#dcfce7' : '#fee2e2';
+                        const isActiveColor = isActive ? '#166534' : '#991b1b';
+                        
                         // Image Logic
                         let imgUrl = `${API_BASE}/media/products/dummy.jpg`;
                         if (p.image) {
@@ -147,30 +153,41 @@
                                 imgUrl = `${API_BASE}/media/${p.image}`;
                             }
                         }
+                        
 
-                        const div = document.createElement('div');
+                        const actionBtn = p.is_active 
+			    ? `<button onclick="deleteProduct(${p.id})" class="btn-danger-outline" style="padding: 6px 12px; font-size:0.8rem;">
+				 Delist
+			       </button>` 
+			    : `<button onclick="activateProduct(${p.id})" class="btn-success-outline" style="padding: 6px 12px; font-size:0.8rem; border: 1px solid #10b981; color: #10b981; background: transparent;">
+				 Make Active
+			       </button>`;
+
+			// 2. Insert into your HTML
+			const div = document.createElement('div');
                         div.className = 'product-item';
-                        div.innerHTML = `
-                            <div class="item-content">
-                                <img src="${imgUrl}" class="item-thumbnail" alt="${p.name}">
-                                <div class="item-info">
-                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
-                                        <h4>${p.name}</h4>
-                                        <span class="status-pill" style="background:${stockBg}; color:${stockColor};">${stockText}</span>
-                                    </div>
-                                    <div class="item-meta">
-                                        <span>$${p.price.toFixed(2)}</span>
-                                        <span style="color:#cbd5e1;">|</span>
-                                        <span>Qty: ${p.amount_in_stock}</span>
-                                        <span style="color:#cbd5e1;">|</span>
-                                        <span>Type: ${p.category.name}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <button onclick="deleteProduct(${p.id})" class="btn-danger-outline" style="padding: 6px 12px; font-size:0.8rem;">
-                                Delete
-                            </button>
-                        `;
+			div.innerHTML = `
+			    <div class="item-content">
+				<img src="${imgUrl}" class="item-thumbnail" alt="${p.name}">
+				<div class="item-info">
+				    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+					<h4>${p.name}</h4>
+					<span class="status-pill" style="background:${stockBg}; color:${stockColor};">${stockText}</span>
+					<span class="status-pill" style="background:${isActiveBg}; color:${isActiveColor};">${isActiveText}</span>
+				    </div>
+				    <div class="item-meta">
+					<span>$${p.price.toFixed(2)}</span>
+					<span style="color:#cbd5e1;">|</span>
+					<span>Qty: ${p.amount_in_stock}</span>
+					<span style="color:#cbd5e1;">|</span>
+					<span>Type: ${p.category ? p.category.name : 'None'}</span>
+				    </div>
+				</div>
+			    </div>
+			    
+			    ${actionBtn}
+			`;
+
                         list.appendChild(div);
                     });
                 } else {
@@ -184,25 +201,52 @@
 
         // 4. Delete Product
         async function deleteProduct(id) {
-            if (!confirm("Are you sure you want to permanently delete this product?")) return;
+            if (!confirm("Are you sure you want to delist this product? It will be hidden from the store.")) return;
 
             try {
                 const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
                     method: 'DELETE'
                 });
                 if (res.ok) {
-                    showToast("Product deleted", "success");
+                    showToast("Product delisted", "success");
                     loadMyProducts(); 
                 } else {
-                    showToast("Failed to delete product", "error");
+                    showToast("Failed to delist product", "error");
                 }
             } catch (e) {
                 console.error(e);
                 showToast("Connection error", "error");
             }
         }
+        
+        // 5. Make Product Active Again
+        async function activateProduct(id) {
+	    if (!confirm("Make this product visible in the store again?")) return;
 
-        // 5. Add Product Form Handler (Updated for File Upload)
+	    try {
+		const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
+		    method: 'PATCH',
+		    headers: {
+		        'Content-Type': 'application/json'
+		    },
+		    body: JSON.stringify({ 
+		        is_active: true 
+		    })
+		});
+
+		if (res.ok) {
+		    showToast("Product is now active", "success");
+		    loadMyProducts();
+		} else {
+		    showToast("Failed to activate product", "error");
+		}
+	    } catch (e) {
+		console.error(e);
+		showToast("Connection error", "error");
+	    }
+	}
+
+        // 6. Add Product Form Handler (Updated for File Upload)
         document.getElementById('addProductForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             

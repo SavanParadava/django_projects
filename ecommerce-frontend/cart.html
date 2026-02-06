@@ -6,19 +6,34 @@
     <link rel="stylesheet" href="style.css">
     <script src="utils.js"></script>
     <style>
-        /* Simple Modal Styles */
+        /* Modal Styles */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
         .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 8px; width: 500px; max-width: 90%; }
         .address-card { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 4px; cursor: pointer; }
         .address-card.selected { border-color: var(--success); background-color: #f0fff4; }
         .form-group { margin-bottom: 10px; }
         .form-group input { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        
+        /* Unavailable Item Styles */
+        .product-card.unavailable {
+            background-color: #fff1f2;
+            border: 1px solid var(--danger);
+            opacity: 0.8;
+        }
+        .unavailable-text {
+            color: var(--danger);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
-    <nav>
-        <h1>Shopping Cart</h1>
-        <div>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>Shopping Cart</h1>
+        </div>
+        <div class="nav-actions">
             <button onclick="window.location.href='index.html'" class="btn-icon">Continue Shopping</button>
             <button onclick="logout()" class="btn-danger-outline">Logout</button>
         </div>
@@ -27,9 +42,12 @@
         <div style="width: 100%; max-width: 800px;">
             <h2>Your Cart</h2>
             <div id="cartContainer">Loading...</div>
-            <div id="totalSection" style="text-align:right; margin-top:20px; display:none; background:white; padding:20px; border-radius:8px;">
+            <div id="totalSection" style="text-align:right; margin-top:20px; display:none; background:white; padding:20px; border-radius:8px; border: 1px solid var(--border);">
                 <h3>Total: $<span id="grandTotal">0.00</span></h3>
-                <button class="btn-block" style="background:var(--success); max-width:200px; display:inline-block;" onclick="openAddressModal()">Proceed to Checkout</button>
+                <p id="cartWarning" style="color: var(--danger); font-size: 0.9rem; display: none; margin-bottom: 10px;">
+                    Some items are currently unavailable.
+                </p>
+                <button id="checkoutBtn" class="btn-block" style="background:var(--success); max-width:200px; display:inline-block;" onclick="initiateCheckout()">Proceed to Checkout</button>
             </div>
         </div>
     </div>
@@ -67,8 +85,11 @@
         if (!token) window.location.href = 'login.html';
         
         let selectedAddressId = null;
+        
+        // State tracking to detect changes
+        let currentCartTotal = 0;
 
-        // --- CART FUNCTIONS (Existing) ---
+        // --- CART FUNCTIONS ---
         async function fetchCart() {
             const res = await authFetch(`${API_BASE}/api/store/cart/`);
             const data = await res.json();
@@ -76,33 +97,43 @@
             
             const container = document.getElementById('cartContainer');
             container.innerHTML = '';
+            
             let total = 0;
 
             if (!items || items.length === 0) {
-                container.innerHTML = '<p>Cart is empty.</p>';
+                container.innerHTML = '<div class="empty-state">Your cart is empty.</div>';
                 document.getElementById('totalSection').style.display = 'none';
+                currentCartTotal = 0;
                 return;
             }
 
             items.forEach(item => {
                 const itemTotal = item.quantity * item.product.price;
-                total += itemTotal;
                 const pid = item.product.id; 
-                // const img = item.product.image || 'placeholder.jpg';
-                let imgUrl = `${API_BASE}/media/products/dummy.jpg`;
+                
+                // 1. Validation Logic
+                // If product is NOT active (delisted) or Out of Stock
+                const isActive = item.product.is_active !== false; 
+                const stock = item.product.amount_in_stock;
+                const isStocked = stock >= item.quantity;
+                const isPurchasable = isActive && isStocked;
 
-		if (item.product.image) {
-		    if (item.product.image.startsWith('http')) {
-			imgUrl = item.product.image;
-		    } else if (item.product.image.startsWith('/media/')) {
-			imgUrl = `${API_BASE}${item.product.image}`;
-		    } else {
-			imgUrl = `${API_BASE}/media/${item.product.image}`;
-		    }
-		}
+                total += itemTotal;
+
+                let errorMsg = '';
+                if (!isActive) errorMsg = 'Item Delisted / Unavailable';
+                else if (!isStocked) errorMsg = `Out of Stock (Only ${stock} left)`;
+
+                // Image Logic
+                let imgUrl = `${API_BASE}/media/products/dummy.jpg`;
+                if (item.product.image) {
+                    if (item.product.image.startsWith('http')) imgUrl = item.product.image;
+                    else if (item.product.image.startsWith('/media/')) imgUrl = `${API_BASE}${item.product.image}`;
+                    else imgUrl = `${API_BASE}/media/${item.product.image}`;
+                }
 
                 const div = document.createElement('div');
-                div.className = 'product-card';
+                div.className = `product-card ${!isPurchasable ? 'unavailable' : ''}`;
                 div.style.flexDirection = 'row';
                 div.style.justifyContent = 'space-between';
                 div.style.alignItems = 'center';
@@ -110,49 +141,155 @@
 
                 div.innerHTML = `
                     <div style="display:flex; gap:15px; align-items:center;">
-                        <img src="${imgUrl}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
+                        <img src="${imgUrl}" style="width:60px; height:60px; object-fit:cover; border-radius:4px; opacity:${isPurchasable ? 1 : 0.5}">
                         <div>
-                            <h3 style="margin:0;">${item.product.name}</h3>
+                            <h3 style="margin:0; ${!isPurchasable ? 'text-decoration:line-through; color:var(--text-muted);' : ''}">${item.product.name}</h3>
                             <p class="price" style="font-size:1rem; margin:5px 0;">$${item.product.price}</p>
+                            ${errorMsg ? `<div class="unavailable-text">⚠️ ${errorMsg}</div>` : ''}
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:20px;">
                         <div class="qty-controls" style="display:flex; align-items:center;">
-                            <button class="qty-btn" onclick="updateQuantity(${pid}, ${item.quantity - 1})">-</button>
-                            <input type="number" value="${item.quantity}" min="0" style="width:50px; text-align:center; margin:0 5px;" onchange="updateQuantity(${pid}, parseInt(this.value))">
-                            <button class="qty-btn" onclick="updateQuantity(${pid}, ${item.quantity + 1})">+</button>
+                            <button class="qty-btn" onclick="adjustQty(${pid}, -1, ${item.product.price})">-</button>
+                            
+                            <input id="qty-${pid}" type="number" value="${item.quantity}" min="1" 
+                                   style="width:50px; text-align:center; margin:0 5px;" 
+                                   onchange="adjustQty(${pid}, 0, ${item.product.price})">
+                                   
+                            <button class="qty-btn" onclick="adjustQty(${pid}, 1, ${item.product.price})" ${!isPurchasable ? 'disabled' : ''}>+</button>
                         </div>
-                        <b style="color:var(--success); min-width:80px; text-align:right;">$${itemTotal.toFixed(2)}</b>
-                        <button onclick="removeItem(${pid})" style="background:var(--accent); color:black; border:none; padding:8px 12px; border-radius:4px; cursor:pointer;">Remove</button>
+                        
+                        <b id="total-${pid}" class="item-total-display" style="color:var(--success); min-width:80px; text-align:right;">
+                            $${itemTotal.toFixed(2)}
+                        </b>
+                        
+                        <button onclick="removeItem(${pid})" class="btn-danger-outline btn-sm">Remove</button>
                     </div>
                 `;
                 container.appendChild(div);
             });
+
+            // Update Global State
+            currentCartTotal = total;
+
+            // Update UI
             document.getElementById('grandTotal').textContent = total.toFixed(2);
             document.getElementById('totalSection').style.display = 'block';
+            
+            const btn = document.getElementById('checkoutBtn');
+            const warn = document.getElementById('cartWarning');
+
+            
         }
 
-        async function updateQuantity(pid, newQty) {
+        // --- NEW: JIT Validation ---
+        async function initiateCheckout() {
+            const btn = document.getElementById('checkoutBtn');
+            const originalText = btn.textContent;
+            
+            // 1. Visual Feedback
+            btn.textContent = "Verifying...";
+            btn.disabled = true;
+
+            try {
+                // 2. Fetch latest data to render the current stock status
+                await fetchCart();
+
+                // 3. Check if fetchCart rendered any "unavailable" items
+                // (This class is added in fetchCart if quantity > stock or item is delisted)
+                const invalidItems = document.querySelectorAll('.product-card.unavailable');
+                
+                if (invalidItems.length > 0) {
+                    showToast("⚠️ Please remove items that exceed available stock.", "error");
+                    return; // Stop here, do not open modal
+                }
+
+                // 4. If no issues, proceed
+                openAddressModal();
+
+            } catch (error) {
+                console.error(error);
+                showToast("Connection error checking stock", "error");
+            } finally {
+                // Reset button state
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function adjustQty(pid, change, unitPrice) {
+            const inputEl = document.getElementById(`qty-${pid}`);
+            
+            // 1. Calculate New Quantity
+            let currentQty = parseInt(inputEl.value);
+            let newQty;
+
+            // If change is 0, user typed a number. Otherwise, it's a button click (+1 or -1).
+            if (change === 0) {
+                newQty = currentQty; 
+            } else {
+                newQty = currentQty + change;
+            }
+
+            // 2. Handle Removal (If quantity goes below 1)
             if (newQty < 1) {
-            	const confirmed = await showConfirm("Remove item?");
-    		if (confirmed) removeItem(pid);
+                const confirmed = await showConfirm("Remove item from cart?");
+                if (confirmed) {
+                    removeItem(pid); // This triggers full fetchCart, which is fine for removal
+                } else {
+                    // If cancelled, reset input to 1 (or keep current)
+                    inputEl.value = 1; 
+                    updateLineItemTotal(pid, 1, unitPrice);
+                }
                 return;
             }
-            const res = await authFetch(`${API_BASE}/api/store/cart/${pid}/`, { 
-                method: 'PATCH', 
-                headers: {'Content-Type': 'application/json' },
-                body: JSON.stringify({ quantity: newQty })
-            });
-            if (res.ok) fetchCart();
-            else { const errorData = await res.json();
 
-			if (errorData.quantity) {
-			    showToast(errorData.quantity[0]);
-			} else {
-			    showToast("Something went wrong");
-			}
-		fetchCart();
-		}
+            // 3. Optimistic UI Update (Update screen BEFORE server responds)
+            inputEl.value = newQty;
+            updateLineItemTotal(pid, newQty, unitPrice);
+            
+            // 4. Silent API Call (Background)
+            try {
+                const res = await authFetch(`${API_BASE}/api/store/cart/${pid}/`, { 
+                    method: 'PATCH', 
+                    headers: {'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQty })
+                });
+
+                // Optional: If server fails, show error
+                if (!res.ok) {
+		    const errorData = await res.json();
+		    if (errorData.quantity) showToast(errorData.quantity[0], "error");
+		    else if (errorData.active) showToast(errorData.active[0], "error");
+		    else showToast("Something went wrong", "error");
+		    // If cancelled, reset input to 1 (or keep current)
+                    inputEl.value = 1; 
+                    updateLineItemTotal(pid, 1, unitPrice);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Helper to update specific item price and Grand Total without reloading
+        function updateLineItemTotal(pid, qty, price) {
+            // Update the specific item's total price text
+            const totalEl = document.getElementById(`total-${pid}`);
+            const lineTotal = qty * price;
+            totalEl.innerText = `$${lineTotal.toFixed(2)}`;
+
+            // Recalculate Grand Total by summing all item totals currently on screen
+            let grandTotal = 0;
+            document.querySelectorAll('.item-total-display').forEach(el => {
+                grandTotal += parseFloat(el.innerText.replace('$', ''));
+            });
+            
+            // Update Grand Total Text
+            const grandTotalEl = document.getElementById('grandTotal');
+            if(grandTotalEl) grandTotalEl.innerText = grandTotal.toFixed(2);
+            
+            // Sync with global state variable used by checkout validation
+            currentCartTotal = grandTotal;
         }
 
         async function removeItem(pid) {
@@ -160,10 +297,13 @@
             fetchCart();
         }
 
-        // --- ADDRESS & CHECKOUT FUNCTIONS (New) ---
+        // --- ADDRESS & CHECKOUT FUNCTIONS ---
 
         function openAddressModal() {
-            document.getElementById('addressModal').style.display = 'block';
+            const modal = document.getElementById('addressModal');
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
             fetchAddresses();
         }
 
@@ -181,7 +321,7 @@
 
         async function fetchAddresses() {
             const list = document.getElementById('addressList');
-            list.innerHTML = 'Loading...';
+            list.innerHTML = '<div class="loading-spinner"></div>';
             
             try {
                 const res = await authFetch(`${API_BASE}/api/store/addresses/`);
@@ -189,8 +329,8 @@
                 
                 list.innerHTML = '';
                 if(addresses.length === 0) {
-                    list.innerHTML = '<p>No addresses found. Please add one.</p>';
-                    showAddAddressForm(); // Auto open form if no addresses
+                    list.innerHTML = '<p class="text-muted">No addresses found. Please add one.</p>';
+                    showAddAddressForm(); 
                 }
 
                 addresses.forEach(addr => {
@@ -203,7 +343,6 @@
                     `;
                     div.onclick = () => selectAddress(div, addr.id);
                     
-                    // Auto select default or first
                     if(selectedAddressId === addr.id || (!selectedAddressId && addr.is_default)) {
                         selectAddress(div, addr.id);
                     }
@@ -211,14 +350,12 @@
                     list.appendChild(div);
                 });
             } catch(e) {
-                list.innerHTML = '<p style="color:red">Error loading addresses</p>';
+                list.innerHTML = '<p style="color:var(--danger)">Error loading addresses</p>';
             }
         }
 
         function selectAddress(element, id) {
-            // Remove selected class from all
             document.querySelectorAll('.address-card').forEach(el => el.classList.remove('selected'));
-            // Add to clicked
             element.classList.add('selected');
             selectedAddressId = id;
         }
@@ -231,7 +368,7 @@
                 zip_code: document.getElementById('addrZip').value,
                 country: document.getElementById('addrCountry').value,
                 phone_number: document.getElementById('addrPhone').value,
-                is_default: true // Make new address default
+                is_default: true
             };
 
             const res = await authFetch(`${API_BASE}/api/store/addresses/`, {
@@ -242,37 +379,56 @@
 
             if(res.ok) {
                 hideAddAddressForm();
-                fetchAddresses(); // Reload list
+                fetchAddresses(); 
+                showToast("Address saved!", "success");
             } else {
-                alert("Failed to save address. Please check inputs.");
+                showToast("Failed to save address. Check inputs.", "error");
             }
         }
 
         async function processPayment() {
             if(!selectedAddressId) {
-                alert("Please select a delivery address.");
+                showToast("Please select a delivery address.", "warning");
                 return;
             }
 
-            const res = await fetch(`${API_BASE}/api/store/cart/checkout/`, {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`, 
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({ address_id: selectedAddressId })
-            });
+            const btn = document.querySelector('#addressModal .btn-block'); 
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "Processing...";
 
-            const data = await res.json();
+            try {
+                const res = await fetch(`${API_BASE}/api/store/cart/checkout/`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`, 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ address_id: selectedAddressId })
+                });
 
-            if (!res.ok) {
-                alert(data || "Checkout failed");
-                return;
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showToast(data.detail || "Checkout failed", "error");
+                    // If checkout failed due to validation, force a cart refresh too
+                    if (res.status === 404 || res.status === 400) {
+                        closeModal();
+                        fetchCart();
+                    }
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    return;
+                }
+
+                showToast("Payment successful! Order placed.", "success");
+                setTimeout(() => window.location.href = 'orders.html', 1000);
+            } catch (error) {
+                console.error(error);
+                showToast("Connection error", "error");
+                btn.disabled = false;
+                btn.textContent = originalText;
             }
-
-            // Success
-            alert("Payment successful! Order placed.");
-            window.location.href = 'orders.html';
         }
 
         // Initialize

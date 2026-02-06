@@ -434,9 +434,12 @@ async function addToCart(id) {
         	const errorData = await res.json();
 
 		if (errorData.quantity) {
-		    showToast(errorData.quantity[0]);
-		} else {
-		    showToast("Something went wrong");
+		    showToast(errorData.quantity[0],"error");
+		} else if (errorData.active) {
+		    showToast(errorData.active[0],"error")
+		}
+		else {
+		    showToast("Something went wrong","error");
 		}
 	}
     } catch (e) { console.error(e); }
