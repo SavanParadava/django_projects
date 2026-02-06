@@ -35,7 +35,7 @@ class ProductSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Product
-        fields = ['id', 'name', 'price', 'amount_in_stock', 'category_id', 'category', 'retailer_id', 'image', 'retailer']
+        fields = ['id', 'name', 'price', 'amount_in_stock', 'category_id', 'category', 'retailer_id', 'image', 'retailer', 'is_active']
     
     def validate_price(self, value):
         if value < 0:
@@ -49,18 +49,23 @@ class ProductSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         amount_in_stock = validated_data.pop('amount_in_stock')
+        is_active = validated_data.pop('is_active')
+        
         with transaction.atomic():
             matching_Product_items = Product.objects.select_for_update().filter(**validated_data)
             
             if matching_Product_items.exists():
                 item = matching_Product_items.first()
-                item.amount_in_stock += amount_in_stock
+                if item.is_active:
+                    item.amount_in_stock += amount_in_stock
+                else:
+                    item.is_active = True
+                    item.amount_in_stock = amount_in_stock
                 item.save()
                 return item
-            
+
             validated_data["amount_in_stock"] = amount_in_stock
             Product_item = Product.objects.create(**validated_data)
-            print(Product_item)
             return Product_item
 
 class OrderSerializer(serializers.ModelSerializer):

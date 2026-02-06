@@ -172,8 +172,16 @@
                 if (res.ok) {
                     showToast("Added to cart!", "success");
                 } else { 
-                    const d = await res.json(); 
-                    showToast(d.detail || "Failed to add to cart", "error"); 
+                    const errorData = await res.json();
+
+		    if (errorData.quantity) {
+		        showToast(errorData.quantity[0],"error");
+		    } else if (errorData.active) {
+		        showToast(errorData.active[0],"error")
+		    }
+		    else {
+		        showToast(errorData.detail || "Failed to add to cart", "error");
+		    }
                 }
             } catch (e) { 
                 console.error(e); 

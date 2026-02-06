@@ -29,7 +29,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        return Product.objects.filter(is_active=True)
+        return Product.objects.all()
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -42,10 +42,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         store_user = get_object_or_404(StoreUser, original_user_id=self.request.user.id)
         serializer.save(retailer=store_user)
     
+    def perform_destroy(self, instance):
+        instance.is_active = False
+        instance.save()
+    
     @action(detail=False, methods=['get'])
     def my_products(self, request):
         store_user = get_object_or_404(StoreUser, original_user_id=request.user.id)
-        products = Product.objects.filter(retailer=store_user).order_by('-created_at')
+        products = self.get_queryset().filter(retailer=store_user).order_by('-created_at')
         
         page = self.paginate_queryset(products)
         if page is not None:
@@ -67,7 +71,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         sort_by_price = request.query_params.get('sort_by_price',None)
 
         try:
-            products = self.get_queryset()
+            products = self.get_queryset().filter(is_active=True)
             total_active_products = products.count()
             
             if max_price:
@@ -129,6 +133,12 @@ class CartViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         product = serializer.validated_data['product']
+        if not product.is_active:
+            raise ValidationError({
+                "active": [
+                    f"You can not add product to cart. Product is delisted"
+                ]
+            })
 
         quantity = serializer.validated_data['quantity']
         x = Cart.objects.filter(user_id=self.request.user.id, product_id=product.id)
