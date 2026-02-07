@@ -187,31 +187,38 @@
             const btn = document.getElementById('checkoutBtn');
             const originalText = btn.textContent;
             
-            // 1. Visual Feedback
             btn.textContent = "Verifying...";
             btn.disabled = true;
 
+            // 1. Snapshot the valid total before refreshing
+            const previousTotal = currentCartTotal;
+
             try {
-                // 2. Fetch latest data to render the current stock status
+                // 2. Fetch latest data (This runs your auto-remove logic for delisted items)
                 await fetchCart();
 
-                // 3. Check if fetchCart rendered any "unavailable" items
-                // (This class is added in fetchCart if quantity > stock or item is delisted)
-                const invalidItems = document.querySelectorAll('.product-card.unavailable');
-                
-                if (invalidItems.length > 0) {
-                    showToast("⚠️ Please remove items that exceed available stock.", "error");
-                    return; // Stop here, do not open modal
+                // 3. Check for STATE CHANGES (e.g., Active item became Delisted/Removed, or Out of Stock)
+                // If the total dropped, it means a previously valid item is now invalid/gone.
+                if (Math.abs(currentCartTotal - previousTotal) > 0.01) {
+                    showToast("⚠️ Cart updated: Items were removed or unavailable.", "warning");
+                    return; // Block checkout so user can see the change
                 }
 
-                // 4. If no issues, proceed
+                // 4. Check for EXISTING STOCK ISSUES
+                // (Items that are still in the list but marked unavailable, e.g., Qty > Stock)
+                const invalidItems = document.querySelectorAll('.product-card.unavailable');
+                if (invalidItems.length > 0) {
+                    showToast("⚠️ Please remove items that exceed available stock.", "error");
+                    return; // Block checkout
+                }
+
+                // 5. If Total is stable AND no invalid items remain, proceed
                 openAddressModal();
 
             } catch (error) {
                 console.error(error);
                 showToast("Connection error checking stock", "error");
             } finally {
-                // Reset button state
                 btn.textContent = originalText;
                 btn.disabled = false;
             }
