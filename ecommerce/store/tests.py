@@ -1,45 +1,38 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from django.db import connection, transaction
+from unittest.mock import patch
 from .models import StoreUser, Category, Product, Cart, Order, Address
+
 
 User = get_user_model()
 
 class EcommerceTestCase(APITestCase):
-    # CRITICAL: Ensures tests can access both databases
     databases = {'default', 'store_db'}
 
     def setUp(self):
-        # 1. Create Users (Auth Level)
+        # 1. Setup Users
         self.retailer_user = User.objects.create_user(
-            username='retailer', 
-            email='retailer@example.com', 
-            password='password123',
-            role='RETAILER'
+            username='retailer', email='r@e.com', password='password123', role='RETAILER'
         )
         self.customer_user = User.objects.create_user(
-            username='customer', 
-            email='customer@example.com', 
-            password='password123',
-            role='CUSTOMER'
+            username='customer', email='c@e.com', password='password123', role='CUSTOMER'
         )
-
-        # 2. Fetch StoreUsers (Created automatically via signals)
+        
+        # 2. Get StoreUsers (synced via signals)
         self.retailer_store_user = StoreUser.objects.get(original_user_id=self.retailer_user.id)
         self.customer_store_user = StoreUser.objects.get(original_user_id=self.customer_user.id)
 
-        # 3. Create Basic Data (Category & Product)
-        self.category = Category.objects.create(name="Electronics")
+        # 3. Data
+        self.category = Category.objects.create(name="Tech")
+        # CHANGED: Set stock to 50 to accommodate the checkout test that buys 10 items
         self.product = Product.objects.create(
-            name="Test Widget", 
-            price=100.0, 
-            amount_in_stock=50, 
-            category=self.category, 
-            retailer=self.retailer_store_user
+            name="GPU", price=500.0, amount_in_stock=50, 
+            category=self.category, retailer=self.retailer_store_user
         )
 
     def get_token_headers(self, user):
-        """Helper to force authenticate"""
         self.client.force_authenticate(user=user)
         return {}
 
@@ -209,3 +202,158 @@ class EcommerceTestCase(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(any(p['name'] == "Cheap" for p in response.data['results']))
+
+    # ----------------------------------------------------------------
+    # Standard Logic Tests
+    # ----------------------------------------------------------------
+
+    def test_add_duplicate_item_merges_quantity(self):
+        """Test that adding the same product twice updates quantity (Your Bulk Logic)"""
+        self.get_token_headers(self.customer_user)
+        
+        # Add 2 items
+        self.client.post('/api/store/cart/', {"product_id": self.product.id, "quantity": 2})
+        # Add 3 MORE items
+        self.client.post('/api/store/cart/', {"product_id": self.product.id, "quantity": 3})
+
+        # Verify: 1 row, 5 qty
+        cart_items = Cart.objects.filter(user=self.customer_store_user)
+        self.assertEqual(cart_items.count(), 1)
+        self.assertEqual(cart_items.first().quantity, 5)
+
+    def test_checkout_success(self):
+        """Test happy path checkout"""
+        self.get_token_headers(self.customer_user)
+        
+        # Create Address & Cart
+        addr = Address.objects.create(user=self.customer_store_user, street_address="A", city="B", state="C", zip_code="D", country="E", phone_number="F")
+        Cart.objects.create(user=self.customer_store_user, product=self.product, quantity=2)
+
+        # Checkout
+        response = self.client.post('/api/store/cart/checkout/', {"address_id": addr.id})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Assertions
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.amount_in_stock, 48) # CHANGED: 50 - 2 = 48
+        self.assertEqual(Order.objects.count(), 1)
+        self.assertEqual(Cart.objects.count(), 0)
+
+    # ----------------------------------------------------------------
+    # Sequential "Race" Condition (SQLite Safe)
+    # ----------------------------------------------------------------
+
+    def test_last_item_contention(self):
+        """
+        Simulate User A buying the last item before User B.
+        No threads needed; just verifying state checks works.
+        """
+        # Set stock to 1
+        self.product.amount_in_stock = 1
+        self.product.save()
+
+        # Create User B
+        user_b = User.objects.create_user(username='user_b', email='b@test.com', password='pw', role='CUSTOMER')
+        store_user_b = StoreUser.objects.get(original_user_id=user_b.id)
+        
+        # Address for both
+        addr_a = Address.objects.create(user=self.customer_store_user, street_address="A", city="A", state="A", zip_code="1", country="A", phone_number="1")
+        addr_b = Address.objects.create(user=store_user_b, street_address="B", city="B", state="B", zip_code="2", country="B", phone_number="2")
+
+        # Both add 1 to cart
+        Cart.objects.create(user=self.customer_store_user, product=self.product, quantity=1)
+        Cart.objects.create(user=store_user_b, product=self.product, quantity=1)
+
+        # User A Checkouts -> Success
+        self.get_token_headers(self.customer_user)
+        resp_a = self.client.post('/api/store/cart/checkout/', {"address_id": addr_a.id})
+        self.assertEqual(resp_a.status_code, status.HTTP_201_CREATED)
+
+        # User B Checkouts -> Fail (Stock is now 0)
+        self.get_token_headers(user_b)
+        resp_b = self.client.post('/api/store/cart/checkout/', {"address_id": addr_b.id})
+        
+        self.assertEqual(resp_b.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Insufficient stock", str(resp_b.data))
+
+    # ----------------------------------------------------------------
+    # Transaction Safety (Atomic Rollback)
+    # ----------------------------------------------------------------
+
+    def test_checkout_rollback_on_failure(self):
+        """
+        CRITICAL: This proves 'atomic' works without threads.
+        We simulate a crash AFTER stock is deducted but BEFORE orders are created.
+        The DB should roll back the stock deduction.
+        """
+        self.get_token_headers(self.customer_user)
+        
+        addr = Address.objects.create(user=self.customer_store_user, street_address="X", city="Y", state="Z", zip_code="0", country="K", phone_number="9")
+        Cart.objects.create(user=self.customer_store_user, product=self.product, quantity=5)
+
+        initial_stock = self.product.amount_in_stock # 50
+
+        # We force an error during Order creation (which happens AFTER stock update in your view)
+        # Your view: 1. bulk_update(product) -> 2. bulk_create(order)
+        with patch('store.models.Order.objects.bulk_create') as mock_create:
+            mock_create.side_effect = Exception("Simulated Database Crash!")
+            
+            response = self.client.post('/api/store/cart/checkout/', {"address_id": addr.id})
+
+            # 1. Expect failure
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("Simulated Database Crash", str(response.data))
+
+            # 2. Verify Rollback
+            # If atomic failed, stock would be 45 (50 - 5).
+            # If atomic worked, stock should still be 50.
+            self.product.refresh_from_db()
+            self.assertEqual(self.product.amount_in_stock, initial_stock, 
+                "FAIL: Transaction did not roll back stock update after order creation failed.")
+            
+            # 3. Cart should still exist (it wasn't deleted because of rollback)
+            self.assertEqual(Cart.objects.filter(user=self.customer_store_user).count(), 1)
+    
+    # ----------------------------------------------------------------
+    # Security & Privacy Tests (Crucial for E-commerce)
+    # ----------------------------------------------------------------
+
+    def test_user_cannot_see_others_orders(self):
+        """
+        Security Check: User A should NOT be able to list or retrieve User B's orders.
+        """
+        # 1. Setup: Create an order for User B (The Victim)
+        user_b = User.objects.create_user(username='victim', email='v@test.com', password='pw', role='CUSTOMER')
+        store_user_b = StoreUser.objects.get(original_user_id=user_b.id)
+        
+        order_b = Order.objects.create(
+            user=store_user_b,
+            product=self.product,
+            quantity=1,
+            total_amount=100.0,
+            shipping_address=Address.objects.create(user=store_user_b, street_address="B St", city="B", state="B", zip_code="2", country="B", phone_number="2")
+        )
+
+        # 2. Action: User A (The Attacker) tries to list orders
+        self.get_token_headers(self.customer_user) # Login as User A
+        response = self.client.get('/api/store/orders/') # Assuming you have an OrderViewSet at this URL
+
+        # 3. Verify: The list should be empty (or not contain order_b)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0, "Security Fail: User A can see User B's orders!")
+
+    def test_user_cannot_access_others_address(self):
+        """
+        Security Check: User A should NOT be able to view/edit User B's address.
+        """
+        # 1. Setup: User B has an address
+        user_b = User.objects.create_user(username='neighbor', email='n@test.com', password='pw', role='CUSTOMER')
+        store_user_b = StoreUser.objects.get(original_user_id=user_b.id)
+        addr_b = Address.objects.create(user=store_user_b, street_address="Secret St", city="Hidden", state="H", zip_code="0", country="X", phone_number="0")
+
+        # 2. Action: User A tries to GET User B's address ID
+        self.get_token_headers(self.customer_user)
+        response = self.client.get(f'/api/store/addresses/{addr_b.id}/')
+
+        # 3. Verify: Should be 404 Not Found (Standard DRF behavior for filtered querysets)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
