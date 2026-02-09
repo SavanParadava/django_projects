@@ -21,8 +21,8 @@ class Router:
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if app_label == 'store':
             return db == 'store_db'
-        
+
         if db == 'store_db':
             return False
-        
+
         return db == 'default'

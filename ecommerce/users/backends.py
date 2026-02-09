@@ -3,7 +3,9 @@ from django.contrib.auth import get_user_model
 
 UserModel = get_user_model()
 
+
 class EmailBackend(ModelBackend):
+
     def authenticate(self, request, username=None, password=None, **kwargs):
         try:
             # Try to fetch the user by email

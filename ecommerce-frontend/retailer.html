@@ -201,7 +201,8 @@
 
         // 4. Delete Product
         async function deleteProduct(id) {
-            if (!confirm("Are you sure you want to delist this product? It will be hidden from the store.")) return;
+            const confirmed = await showConfirm("Product will be delisted. It will be hidden from the store.");
+	    if (!confirmed) return;
 
             try {
                 const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
@@ -221,8 +222,8 @@
         
         // 5. Make Product Active Again
         async function activateProduct(id) {
-	    if (!confirm("Make this product visible in the store again?")) return;
-
+            const confirmed = await showConfirm("Make this product visible in the store again?");
+	    if (!confirmed) return;
 	    try {
 		const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
 		    method: 'PATCH',

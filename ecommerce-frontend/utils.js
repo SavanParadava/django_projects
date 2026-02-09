@@ -1,4 +1,4 @@
-const API_BASE = 'https://savan99.pythonanywhere.com';
+const API_BASE = 'http://127.0.0.1:8000';
 
 // Helper to parse JWT tokens (to get role/user_id)
 function parseJwt(token) {
@@ -20,7 +20,7 @@ function logout() {
  * @param {string} type - 'success', 'error', 'warning', or 'info'
  * @param {number} duration - Time in ms before auto-close (default 3000)
  */
-function showToast(message, type = 'info', duration = 3000) {
+function showToast(message, type = 'info', duration = 2000) {
     let container = document.querySelector('.toast-container');
     
     // Create container if it doesn't exist

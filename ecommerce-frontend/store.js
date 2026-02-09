@@ -576,7 +576,7 @@ window.resetReviewForm = function() {
 }
 
 window.deleteReview = async function(productId) {
-    const confirmed = await showConfirm("Are you sure you want to delete this review?");
+    const confirmed = await showConfirm("Delete this review?");
     if (!confirmed) return;
     
     const res = await authFetch(`${API_BASE}/api/store/user_review/${productId}/`, { method: 'DELETE' });
