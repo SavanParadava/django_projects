@@ -67,9 +67,6 @@
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('registerBtn');
-
-	    btn.disabled = true;
-	    btn.textContent = "Creating account...";
             
             const role = document.getElementById('role').value;
             const email = document.getElementById('email').value;
@@ -111,6 +108,9 @@
                 first_name: firstName,
                 last_name: lastName
             };
+            
+            btn.disabled = true;
+	    btn.textContent = "Creating account...";
 
             try {
                 let response;
