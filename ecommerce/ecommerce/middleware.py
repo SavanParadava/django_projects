@@ -19,7 +19,6 @@ class RateLimitMiddleware:
 
         client_ip, is_routable = get_client_ip(request)
         objects = IpCount.objects.filter(ip_address=client_ip)
-        print(objects)
 
         if objects:
             obj = objects[0]

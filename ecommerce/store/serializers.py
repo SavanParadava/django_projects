@@ -116,7 +116,6 @@ class CartSerializer(serializers.ModelSerializer):
             
             validated_data["quantity"] = quantity
             cart_item = Cart.objects.create(**validated_data)
-            print(cart_item)
             return cart_item
     
 class LikedProductSerializer(serializers.ModelSerializer):

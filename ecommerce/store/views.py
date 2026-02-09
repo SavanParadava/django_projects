@@ -162,7 +162,6 @@ class CartViewSet(viewsets.ModelViewSet):
 
         serializer.save()
 
-    
     @action(detail=False, methods=['post'])
     def checkout(self, request):
         store_user = get_object_or_404(StoreUser, original_user_id=request.user.id)
@@ -173,37 +172,57 @@ class CartViewSet(viewsets.ModelViewSet):
             
         address = get_object_or_404(Address, id=address_id, user=store_user)
         
+        # 1. Get Cart Items
         cart_items = Cart.objects.filter(user=store_user)
-        
         if not cart_items.exists():
-            return Response(
-                {"detail": "Cart is empty."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
+                # 2. Fetch and Lock all products in ONE query
+                # We use select_for_update() to lock rows, preventing race conditions.
+                product_ids = cart_items.values_list('product_id', flat=True)
+                locked_products = Product.objects.select_for_update().in_bulk(product_ids)
+
+                orders_to_create = []
+                products_to_update = []
+
+                # 3. Iterate through cart items in memory
                 for item in cart_items:
-                    product = Product.objects.select_for_update().get(pk=item.product.pk)
+                    product = locked_products.get(item.product_id)
                     
+                    if not product:
+                        raise ValidationError(f"Product {item.product_id} not found.")
+
+                    # Stock Validation
                     if product.amount_in_stock < item.quantity:
                         raise ValidationError(
                             f"Insufficient stock for '{product.name}'. Available: {product.amount_in_stock}, Requested: {item.quantity}"
                         )
-                for item in cart_items:
-                    product = Product.objects.select_for_update().get(pk=item.product.pk)
                     
+                    # Deduct Stock (in memory)
                     product.amount_in_stock -= item.quantity
-                    product.save()
-                    
-                    Order.objects.create(
-                        user=store_user,
-                        product=product,
-                        quantity=item.quantity,
-                        total_amount=product.price * item.quantity,
-                        shipping_address=address
+                    products_to_update.append(product)
+
+                    # Prepare Order Object (in memory)
+                    orders_to_create.append(
+                        Order(
+                            user=store_user,
+                            product=product,
+                            quantity=item.quantity,
+                            total_amount=product.price * item.quantity,
+                            shipping_address=address
+                        )
                     )
+
+                # 4. Perform Bulk Operations
+                # Update all product stocks in 1 SQL query
+                Product.objects.bulk_update(products_to_update, ['amount_in_stock'])
                 
+                # Create all orders in 1 SQL query
+                Order.objects.bulk_create(orders_to_create)
+                
+                # 5. Clear Cart
                 cart_items.delete()
                 
             return Response({"detail": "Checkout successful."}, status=status.HTTP_201_CREATED)
