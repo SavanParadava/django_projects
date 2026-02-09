@@ -178,7 +178,7 @@ class CartViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            with transaction.atomic():
+            with transaction.atomic(using='store_db'):
                 # 2. Fetch and Lock all products in ONE query
                 # We use select_for_update() to lock rows, preventing race conditions.
                 product_ids = cart_items.values_list('product_id', flat=True)
