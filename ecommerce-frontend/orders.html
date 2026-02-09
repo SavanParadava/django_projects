@@ -6,9 +6,29 @@
     <title>My Orders</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="utils.js"></script>
+    <script src="utils.js" ></script>
+    <script src="store.js" defer></script>
 </head>
 <body>
+    <!-- Hidden elements required by store.js (orders.html compatibility layer) -->
+    <div style="display:none">
+        <input id="searchInput">
+        <input id="minPrice">
+        <input id="maxPrice">
+        <select id="categoryFilter"></select>
+
+        <div id="navCategoryLinks"></div>
+        <div id="resultsInfo"></div>
+
+        <div id="productContainer"></div>
+
+        <button id="prevBtn"></button>
+        <button id="nextBtn"></button>
+
+        <button id="sortNone"></button>
+        <button id="sortAsc"></button>
+        <button id="sortDesc"></button>
+    </div>
     <nav class="navbar">
         <div class="nav-brand">
             <h1>My Ecommerce</h1>
@@ -59,7 +79,7 @@
                     </div>
                     
                     <div class="form-actions">
-                        <button type="button" id="cancelEditBtn" onclick="resetReviewForm()" class="btn-ghost hidden" style="margin-right: 10px;">Cancel</button>
+                        <button type="button" id="cancelEditBtn" onclick="resetReviewForm()" class="btn-ghost hidden">Cancel</button>
                         <button type="submit" class="btn-primary" id="reviewSubmitBtn">Submit Review</button>
                     </div>
                 </form>
@@ -140,7 +160,7 @@
                                 </div>
                                 <div style="margin-top: 10px; display: flex; gap: 10px;">
                                     <button class="btn-outline btn-sm" onclick="buyAgain(${o.product.id})">Buy Again</button>
-                                    <button class="btn-outline btn-sm" onclick="openReviewModal(${o.product.id}, '${o.product.name.replace(/'/g, "\\'")}')">Reviews</button>
+                		    <button class="btn-outline" data-action="reviews" data-id="${o.product.id}" data-name="${o.product.name}">Reviews</button>   
                                 </div>
                             </div>
 
@@ -188,155 +208,22 @@
             }
         }
 
-        // --- Review Modal Logic ---
-
-        function closeReviewModal() { 
-            document.getElementById('reviewModal').style.display = 'none'; 
-        }
-
-        async function openReviewModal(pid, pname) {
-            resetReviewForm(); 
-            document.getElementById('reviewModal').style.display = 'flex';
-            document.getElementById('modalTitle').textContent = `Reviews: ${pname}`;
-            document.getElementById('reviewProductId').value = pid;
-            
-            const list = document.getElementById('reviewList');
-            list.innerHTML = '<div class="loading-spinner"></div>';
-
-            try {
-                // Fetch public reviews and user's specific review
-                const [allReviewsRes, myReviewRes] = await Promise.all([
-                    fetch(`${API_BASE}/api/store/reviews/?product_id=${pid}`, {
-                        headers: { "ngrok-skip-browser-warning": "true" }
-                    }),
-                    authFetch(`${API_BASE}/api/store/user_review/${pid}/`).catch(e => null)
-                ]);
-
-                const allReviewsData = await allReviewsRes.json();
-                let allReviews = allReviewsData.results || allReviewsData;
-                
-                let myReview = null;
-                if (myReviewRes && myReviewRes.ok) {
-                    myReview = await myReviewRes.json();
-                }
-
-                list.innerHTML = '';
-
-                // Filter myReview out of the general list to avoid duplication
-                if (myReview) {
-                    renderMyReview(myReview, pid);
-                    allReviews = allReviews.filter(r => r.id !== myReview.id);
-                }
-
-                if (allReviews.length === 0 && !myReview) {
-                    list.innerHTML = '<div class="empty-state">No reviews yet. Be the first!</div>';
-                } else {
-                    allReviews.forEach(renderOtherReview);
-                }
-
-            } catch (error) {
-                console.error(error);
-                list.innerHTML = '<div class="error-state">Failed to load reviews.</div>';
-            }
-        }
-
-        function renderMyReview(review, pid) {
-            const list = document.getElementById('reviewList');
-            const d = document.createElement('div');
-            d.className = 'review-card my-review'; 
-            d.innerHTML = `
-                <div class="review-header">
-                    <div><strong>You</strong> <span class="badge badge-blue">YOUR REVIEW</span></div>
-                    <div class="star-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}</div>
-                </div>
-                <p class="review-body">${review.comment}</p>
-                <div class="review-actions">
-                    <button onclick="editReview(${review.id}, ${review.rating}, '${review.comment.replace(/'/g, "\\'")}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteReview(${pid})">Delete</button>
-                </div>
-            `;
-            list.appendChild(d);
-        }
-
-        function renderOtherReview(review) {
-            const list = document.getElementById('reviewList');
-            const d = document.createElement('div');
-            d.className = 'review-card';
-            const userDisplay = (review.user && review.user.email) ? review.user.email.split('@')[0] : 'User';
-            
-            d.innerHTML = `
-                <div class="review-header">
-                    <strong>${userDisplay}</strong>
-                    <div class="star-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}</div>
-                </div>
-                <p class="review-body">${review.comment}</p>
-            `;
-            list.appendChild(d);
-        }
-
-        function editReview(id, rating, comment) {
-            document.getElementById('reviewFormTitle').textContent = "Edit Your Review";
-            document.getElementById('editingReviewId').value = id; 
-            document.getElementById('reviewRating').value = rating;
-            document.getElementById('reviewComment').value = comment;
-            document.getElementById('reviewSubmitBtn').textContent = "Update Review";
-            document.getElementById('cancelEditBtn').style.display = 'inline-block';
-        }
-
-        function resetReviewForm() {
-            document.getElementById('reviewFormTitle').textContent = "Write a Review";
-            document.getElementById('editingReviewId').value = '';
-            document.getElementById('reviewRating').value = '';
-            document.getElementById('reviewComment').value = '';
-            document.getElementById('reviewSubmitBtn').textContent = "Submit Review";
-            document.getElementById('cancelEditBtn').style.display = 'none';
-        }
-
-        async function deleteReview(productId) {
-            const confirmed = await showConfirm("Are you sure you want to delete this review?");
-            if (!confirmed) return;
-            
-            const res = await authFetch(`${API_BASE}/api/store/user_review/${productId}/`, { method: 'DELETE' });
-            if (res.ok) {
-                const pname = document.getElementById('modalTitle').textContent.replace('Reviews: ', '');
-                openReviewModal(productId, pname);
-                showToast("Review deleted", "success");
-            } else {
-                showToast("Failed to delete review", "error");
-            }
-        }
-
-        // Handle Review Submission
-        document.getElementById('reviewForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const pid = document.getElementById('reviewProductId').value;
-            const isEditing = document.getElementById('editingReviewId').value;
-            const rating = document.getElementById('reviewRating').value;
-            const comment = document.getElementById('reviewComment').value;
-
-            let url = `${API_BASE}/api/store/user_review/`;
-            let method = 'POST';
-            if (isEditing) { url += `${pid}/`; method = 'PATCH'; }
-
-            const res = await authFetch(url, {
-                method: method,
-                headers: {'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: pid, rating: rating, comment: comment })
-            });
-            
-            if (res.ok) { 
-                showToast(isEditing ? "Review Updated!" : "Review Submitted!","success"); 
-                resetReviewForm();
-                const pname = document.getElementById('modalTitle').textContent.replace('Reviews: ', '');
-                openReviewModal(pid, pname);
-            } else { 
-                const err = await res.json();
-                showToast("Error: " + (err.detail || "Could not save review"),"error"); 
-            }
-        });
-
         // Initialize
         fetchOrders();
+        document.addEventListener('click', (e) => {
+	    const btn = e.target.closest('button[data-action="reviews"]');
+	    if (!btn) return;
+
+	    const pid = btn.dataset.id;
+	    const pname = btn.dataset.name;
+
+	    if (typeof openReviewModal === 'function') {
+		openReviewModal(pid, pname);
+	    } else {
+		console.error('openReviewModal not loaded');
+	    }
+	});
+
     </script>
 </body>
 </html>

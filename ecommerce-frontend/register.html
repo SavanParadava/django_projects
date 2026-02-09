@@ -51,7 +51,7 @@
                     <input type="password" id="confirmPassword" required placeholder="••••••••">
                 </div>
                 
-                <button type="submit" class="btn-primary btn-block">Register</button>
+                <button type="submit" class="btn-primary btn-block" id="registerBtn">Register</button>
                 
                 <div class="link-text">
                     Already have an account? <a href="login.html">Login</a>
@@ -66,6 +66,10 @@
     <script>
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('registerBtn');
+
+	    btn.disabled = true;
+	    btn.textContent = "Creating account...";
             
             const role = document.getElementById('role').value;
             const email = document.getElementById('email').value;
@@ -153,6 +157,10 @@
                 console.error(error);
                 showToast("Connection error.", "error");
             }
+            finally {
+	        btn.disabled = false;
+	        btn.textContent = "Register";
+	    }
         });
     </script>
 </body>

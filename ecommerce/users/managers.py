@@ -7,13 +7,14 @@ class CustomUserManager(BaseUserManager):
     Custom user model manager where email is the unique identifiers
     for authentication instead of usernames.
     """
+
     def create_user(self, username, password, email, **extra_fields):
         """
         Create and save a user with the given email and password.
         """
-        if not (email or extra_fields.get("is_superuser",None)):
+        if not (email or extra_fields.get("is_superuser", None)):
             raise ValueError(_("The Email must be set"))
-        
+
         if email:
             email = self.normalize_email(email)
         user = self.model(username=username, email=email, **extra_fields)
