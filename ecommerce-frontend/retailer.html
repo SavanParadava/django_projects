@@ -1,83 +1,181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Retailer Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="style.css">
+    
     <script src="utils.js"></script>
-</head>
-<body>
-    <nav>
-        <h1>Retailer Dashboard</h1>
-        <div>
-            <button onclick="window.location.href='index.html'" class="btn-outline">Back to Store</button>
-            <button onclick="logout()" class="btn-danger-outline" style="margin-left: 10px;">Logout</button>
+    
+    <style>
+        /* Small overrides to ensure images look good in the list group */
+        .product-thumbnail {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        /* --- FIX: Override Bootstrap's default .toast hiding --- */
+        /* Bootstrap sets .toast to 'display: none'. We must force it to 'flex' 
+           so your utils.js toast (which uses custom CSS) is visible. */
+        .toast-container .toast {
+            display: flex !important; 
+            opacity: 1;
+            cursor: pointer; /* Show hand cursor to indicate clickable */
+        }
+
+        /* 2. Define the missing slideOut animation so the toast actually leaves */
+        @keyframes slideOut {
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+    </style>
+  </head>
+  <body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <i class="bi bi-shop me-2"></i>
+            E-Commerce Store
+        </a>
+        <div class="d-flex align-items-center">
+            <span id="welcomeText" class="navbar-text me-3" style="display: none;">
+                Welcome, User
+            </span>
+            <a href="index.html" class="btn btn-outline-light btn-sm mx-2">
+                <i class="bi bi-arrow-left me-1"></i> Store
+            </a>
+            <button onclick="logout()" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-right me-1"></i>Logout
+            </button>
         </div>
+      </div>
     </nav>
 
-    <div class="dashboard-grid">
-        <div class="form-box" style="margin: 0; width: 100%; max-width: 100%;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="margin-bottom: 5px;">Add Product</h2>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Expand your catalog</p>
+    <main class="container py-4">
+      
+      <div class="toast-container"></div>
+
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Retailer Dashboard</h2>
+      </div>
+
+      <div class="row">
+        
+        <div class="col-lg-5 mb-4 mb-lg-0">
+          <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="bi bi-plus-circle-fill me-2"></i>Add Product
+              </h5>
             </div>
-            
-            <form id="addProductForm">
-                <div class="form-group">
-                    <label>Product Name</label>
-                    <input type="text" id="name" required placeholder="e.g. Wireless Headphones">
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div class="form-group">
-                        <label>Price ($)</label>
-                        <input type="number" id="price" step="0.01" min="0" required placeholder="0.00">
-                    </div>
-                    <div class="form-group">
-                        <label>Stock</label>
-                        <input type="number" id="stock" min="0" required placeholder="0">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Category</label>
-                    <div class="select-wrapper">
-                        <select id="catId" required>
-                            <option value="" disabled selected>Select Category</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Product Image</label>
-                    <input type="file" id="image" accept="image/*" style="padding: 6px;">
-                </div>
+            <div class="card-body">
+              <form id="addProductForm">
                 
-                <button type="submit" class="btn-primary btn-block" style="margin-top: 20px;">+ Create Product</button>
-            </form>
+                <div class="mb-3">
+                    <label for="name" class="form-label">Product Name</label>
+                    <input type="text" class="form-control" id="name" required placeholder="e.g. Wireless Headphones">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="price" class="form-label">Price ($)</label>
+                        <input type="number" class="form-control" id="price" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="stock" class="form-label">Stock</label>
+                        <input type="number" class="form-control" id="stock" min="0" required placeholder="0">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="catId" class="form-label">Category</label>
+                    <select class="form-select" id="catId" required>
+                        <option value="" disabled selected>Select Category</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="image" class="form-label">Product Image</label>
+                    <input type="file" class="form-control" id="image" accept="image/*">
+                </div>
+
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle me-1"></i> Create Product
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
 
-        <div class="form-box" style="margin: 0; width: 100%; max-width: 100%;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid var(--border);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <h2 style="margin:0;">Inventory</h2>
-                    <span id="productCountBadge" class="total-badge">0</span>
-                </div>
-                <button onclick="loadMyProducts()" class="btn-icon-small" title="Refresh List">↻ Refresh</button>
-            </div>
-            
-            <div id="myProductsList">
-                <div style="text-align:center; padding: 40px; color: var(--text-muted);">
-                    <div class="loading-spinner"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+	<div class="col-lg-7">
+	  <div class="card shadow-sm">
+	    <div class="card-header d-flex justify-content-between align-items-center">
+	      <h5 class="mb-0">
+		<i class="bi bi-box-seam-fill me-2"></i>Inventory
+	      </h5>
+	      <button onclick="loadMyProducts()" class="btn btn-sm btn-outline-secondary" title="Refresh">
+		<i class="bi bi-arrow-clockwise"></i>
+	      </button>
+	    </div>
+	    
+	    <div class="card-body p-0">
+		<ul id="myProductsList" class="list-group list-group-flush">
+		    </ul>
+		
+		<div id="emptyState" class="text-center text-muted p-4" style="display: none;">
+		    No products found.
+		</div>
+	    </div>
+	    
+	    <div class="card-footer bg-light d-flex justify-content-between align-items-center">
+		<small class="text-muted">
+		    Total: <span id="productCountBadge" class="fw-bold">0</span>
+		</small>
+		
+		<div class="btn-group btn-group-sm">
+		    <button id="btnPrev" class="btn btn-outline-secondary" disabled onclick="loadPage('prev')">
+		        <i class="bi bi-chevron-left"></i> Previous
+		    </button>
+		    <button id="btnNext" class="btn btn-outline-secondary" disabled onclick="loadPage('next')">
+		        Next <i class="bi bi-chevron-right"></i>
+		    </button>
+		</div>
+	    </div>
+	  </div>
+	</div>
+
+      </div>
+    </main>
+    
+    <footer class="text-center text-muted mt-5 border-top pt-3 pb-4">
+      <p></p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
     <script>
-        // 1. Auth Check
+
+        // 1. Auth Check & Navbar Update
         const token = localStorage.getItem('accessToken');
         if (!token) window.location.href = 'login.html';
+
+        // Display Username if available in token
+        const userData = parseJwt(token);
+        if (userData && userData.username) {
+            const welcomeEl = document.getElementById('welcomeText');
+            welcomeEl.textContent = `Welcome, ${userData.username}`;
+            welcomeEl.style.display = 'block';
+        }
 
         // 2. Load Categories
         async function loadCategories() {
@@ -102,36 +200,61 @@
             }
         }
 
-        // 3. Load Products
-        async function loadMyProducts() {
-            const list = document.getElementById('myProductsList');
-            const badge = document.getElementById('productCountBadge');
-            
-            if(list.children.length === 0) {
-                 list.innerHTML = '<div style="text-align:center; padding:40px;"><div class="loading-spinner"></div></div>';
-            }
-            
-            try {
-                const response = await authFetch(`${API_BASE}/api/store/products/my_products/`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const products = data.results || data; 
-                    
-                    badge.textContent = products.length;
-                    list.innerHTML = '';
+	// --- Global Pagination State ---
+	let currentNextUrl = null;
+	let currentPrevUrl = null;
 
-                    if (products.length === 0) {
-                        list.innerHTML = `
-                            <div style="text-align:center; padding:40px; color:var(--text-muted);">
-                                <p style="font-size:1.5rem; margin-bottom:10px;">📦</p>
-                                <p>You haven't added any products yet.</p>
-                            </div>`;
-                        return;
-                    }
+	// Helper to handle button clicks
+	function loadPage(direction) {
+	    if (direction === 'next' && currentNextUrl) {
+		loadMyProducts(currentNextUrl);
+	    } else if (direction === 'prev' && currentPrevUrl) {
+		loadMyProducts(currentPrevUrl);
+	    }
+	}
 
-                    products.forEach(p => {
-                        // Stock Logic
-                        const isStocked = p.amount_in_stock > 0;
+	// 3. Load Products (With Pagination)
+	async function loadMyProducts(url = null) {
+	    const list = document.getElementById('myProductsList');
+	    const badge = document.getElementById('productCountBadge');
+	    const emptyState = document.getElementById('emptyState');
+	    const btnNext = document.getElementById('btnNext');
+	    const btnPrev = document.getElementById('btnPrev');
+
+	    // Default URL if none provided
+	    const fetchUrl = url || `${API_BASE}/api/store/products/my_products/`;
+
+	    try {
+		const response = await authFetch(fetchUrl);
+		
+		if (response.ok) {
+		    const data = await response.json();
+		    
+		    // DRF Pagination handling
+		    // If paginated, 'data.results' is the array. If not, 'data' is the array.
+		    const products = data.results || data; 
+		    const totalCount = data.count || products.length;
+
+		    // Update Pagination State
+		    currentNextUrl = data.next;
+		    currentPrevUrl = data.previous;
+
+		    // Update Button UI
+		    btnNext.disabled = !currentNextUrl;
+		    btnPrev.disabled = !currentPrevUrl;
+		    
+		    // 1. Build List in Memory
+		    const fragment = document.createDocumentFragment();
+
+		    products.forEach(p => {
+		        let imgUrl = `${API_BASE}/media/products/dummy.jpg`;
+		        if (p.image) {
+		            if (p.image.startsWith('http')) imgUrl = p.image;
+		            else if (p.image.startsWith('/media/')) imgUrl = `${API_BASE}${p.image}`;
+		            else imgUrl = `${API_BASE}/media/${p.image}`;
+		        }
+		        
+		        const isStocked = p.amount_in_stock > 0;
                         const stockText = isStocked ? 'In Stock' : 'Out of Stock';
                         const stockBg = isStocked ? '#dcfce7' : '#fee2e2';
                         const stockColor = isStocked ? '#166534' : '#991b1b';
@@ -141,73 +264,69 @@
                         const isActiveText = isActive ? 'Active' : 'Delisted';
                         const isActiveBg = isActive ? '#dcfce7' : '#fee2e2';
                         const isActiveColor = isActive ? '#166534' : '#991b1b';
-                        
-                        // Image Logic
-                        let imgUrl = `${API_BASE}/media/products/dummy.jpg`;
-                        if (p.image) {
-                            if (p.image.startsWith('http')) {
-                                imgUrl = p.image;
-                            } else if (p.image.startsWith('/media/')) {
-                                imgUrl = `${API_BASE}${p.image}`;
-                            } else {
-                                imgUrl = `${API_BASE}/media/${p.image}`;
-                            }
-                        }
-                        
 
-                        const actionBtn = p.is_active 
-			    ? `<button onclick="deleteProduct(${p.id})" class="btn-danger-outline" style="padding: 6px 12px; font-size:0.8rem;">
-				 Delist
-			       </button>` 
-			    : `<button onclick="activateProduct(${p.id})" class="btn-success-outline" style="padding: 6px 12px; font-size:0.8rem; border: 1px solid #10b981; color: #10b981; background: transparent;">
-				 Make Active
-			       </button>`;
+		        const stockBadge = `<span class="status-pill" style="background:${stockBg}; color:${stockColor};">${stockText}</span>`;
+		        
+		        const activeBadge = `<span class="status-pill" style="background:${isActiveBg}; color:${isActiveColor};">${isActiveText}</span>`;
+		        const actionBtn = p.is_active 
+		            ? `<a href="#" onclick="deleteProduct(${p.id}); return false;" class="btn btn-outline-danger btn-sm" title="Delist Product">
+		                <i class="bi bi-trash"></i>
+		               </a>` 
+		            : `<a href="#" onclick="activateProduct(${p.id}); return false;" class="btn btn-outline-success btn-sm" title="Activate Product">
+		                <i class="bi bi-check-lg"></i>
+		               </a>`;
 
-			// 2. Insert into your HTML
-			const div = document.createElement('div');
-                        div.className = 'product-item';
-			div.innerHTML = `
-			    <div class="item-content">
-				<img src="${imgUrl}" class="item-thumbnail" alt="${p.name}">
-				<div class="item-info">
-				    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
-					<h4>${p.name}</h4>
-					<span class="status-pill" style="background:${stockBg}; color:${stockColor};">${stockText}</span>
-					<span class="status-pill" style="background:${isActiveBg}; color:${isActiveColor};">${isActiveText}</span>
-				    </div>
-				    <div class="item-meta">
-					<span>$${p.price.toFixed(2)}</span>
-					<span style="color:#cbd5e1;">|</span>
-					<span>Qty: ${p.amount_in_stock}</span>
-					<span style="color:#cbd5e1;">|</span>
-					<span>Type: ${p.category ? p.category.name : 'None'}</span>
-				    </div>
-				</div>
-			    </div>
-			    
-			    ${actionBtn}
-			`;
+		        const li = document.createElement('li');
+		        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+		        
+		        li.innerHTML = `
+		            <div class="d-flex align-items-center">
+		                <img src="${imgUrl}" alt="${p.name}" class="product-thumbnail border me-3" loading="lazy">
+		                <div>
+		                    <strong>${p.name}</strong>
+		                    <div class="small mb-1">
+		                        ${stockBadge} ${activeBadge}
+		                    </div>
+		                    <small class="text-muted">
+		                        $${p.price.toFixed(2)} | Qty: ${p.amount_in_stock} | ${p.category ? p.category.name : 'Uncategorized'}
+		                    </small>
+		                </div>
+		            </div>
+		            <div>
+		                ${actionBtn}
+		            </div>
+		        `;
 
-                        list.appendChild(div);
-                    });
-                } else {
-                    list.innerHTML = '<p style="color:var(--danger); text-align:center;">Failed to load inventory.</p>';
-                }
-            } catch (e) {
-                console.error(e);
-                list.innerHTML = '<p style="color:var(--danger); text-align:center;">Connection error.</p>';
-            }
-        }
+		        fragment.appendChild(li);
+		    });
 
-        // 4. Delete Product
+		    // 2. Seamless Swap
+		    list.innerHTML = ''; // Clear old items only now
+		    
+		    if (products.length === 0) {
+		        emptyState.style.display = 'block';
+		        badge.textContent = '0';
+		    } else {
+		        emptyState.style.display = 'none';
+		        list.appendChild(fragment);
+		        badge.textContent = totalCount;
+		    }
+
+		} else {
+		    showToast("Failed to load inventory.", "error");
+		}
+	    } catch (e) {
+		console.error(e);
+		showToast("Connection error.", "error");
+	    }
+	}
+        // 4. Delete Product (Delist)
         async function deleteProduct(id) {
             const confirmed = await showConfirm("Product will be delisted. It will be hidden from the store.");
-	    if (!confirmed) return;
+            if (!confirmed) return;
 
             try {
-                const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
-                    method: 'DELETE'
-                });
+                const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, { method: 'DELETE' });
                 if (res.ok) {
                     showToast("Product delisted", "success");
                     loadMyProducts(); 
@@ -220,50 +339,44 @@
             }
         }
         
-        // 5. Make Product Active Again
+        // 5. Activate Product
         async function activateProduct(id) {
             const confirmed = await showConfirm("Make this product visible in the store again?");
-	    if (!confirmed) return;
-	    try {
-		const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
-		    method: 'PATCH',
-		    headers: {
-		        'Content-Type': 'application/json'
-		    },
-		    body: JSON.stringify({ 
-		        is_active: true 
-		    })
-		});
+            if (!confirmed) return;
+            try {
+                const res = await authFetch(`${API_BASE}/api/store/products/${id}/`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: true })
+                });
 
-		if (res.ok) {
-		    showToast("Product is now active", "success");
-		    loadMyProducts();
-		} else {
-		    showToast("Failed to activate product", "error");
-		}
-	    } catch (e) {
-		console.error(e);
-		showToast("Connection error", "error");
-	    }
-	}
+                if (res.ok) {
+                    showToast("Product is now active", "success");
+                    loadMyProducts();
+                } else {
+                    showToast("Failed to activate product", "error");
+                }
+            } catch (e) {
+                console.error(e);
+                showToast("Connection error", "error");
+            }
+        }
 
-        // 6. Add Product Form Handler (Updated for File Upload)
+        // 6. Add Product Form Handler
         document.getElementById('addProductForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const submitBtn = e.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
+            const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.textContent = "Creating...";
+            submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...`;
 
-            // Use FormData to handle file uploads
             const formData = new FormData();
             formData.append('name', document.getElementById('name').value);
             formData.append('price', document.getElementById('price').value);
             formData.append('amount_in_stock', document.getElementById('stock').value);
             formData.append('category_id', document.getElementById('catId').value);
 
-            // Check if file is selected
             const fileInput = document.getElementById('image');
             if (fileInput.files[0]) {
                 formData.append('image', fileInput.files[0]);
@@ -293,7 +406,7 @@
                 showToast("Connection error", "error");
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
+                submitBtn.innerHTML = originalText;
             }
         });
 
@@ -301,5 +414,5 @@
         loadCategories();
         loadMyProducts();
     </script>
-</body>
+  </body>
 </html>
