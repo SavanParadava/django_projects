@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -11,7 +11,6 @@ from .permissions import *
 from .models import *
 from .serializers import *
 
-
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
@@ -22,6 +21,31 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     authentication_classes = [JWTAuthentication]
+
+    def list(self, request, *args, **kwargs):
+        cache_key = 'all_categories'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data:
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+        # Cache the categories for 24 hours (86400 seconds)
+        cache.set(cache_key, response.data, timeout=86400) 
+        return response
+    
+    # Invalidate (delete) the cache whenever a category is added, updated, or deleted
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        cache.delete('all_categories')
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        cache.delete('all_categories')
+
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        cache.delete('all_categories')
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -43,10 +67,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         store_user = get_object_or_404(StoreUser,
                                        original_user_id=self.request.user.id)
         serializer.save(retailer=store_user)
+        cache.delete_pattern("filtered_products_*")
 
     def perform_destroy(self, instance):
         instance.is_active = False
         instance.save()
+        cache.delete_pattern("filtered_products_*")
 
     @action(detail=False, methods=['get'])
     def my_products(self, request):
@@ -65,6 +91,14 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def filter_products(self, request):
+        query_string = request.META.get('QUERY_STRING', '')
+        cache_key = f"filtered_products_{query_string}"
+        
+        # Check if we already have the result for these exact filters in Redis
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+        
         num = request.query_params.get('num', 9)
         self.paginator.page_size = int(num)
         max_price = request.query_params.get('max_price', '')
@@ -99,6 +133,10 @@ class ProductViewSet(viewsets.ModelViewSet):
             serializer = ProductSerializer(page, many=True)
             response = self.get_paginated_response(serializer.data)
             response.data['total_active_products'] = total_active_products
+
+            # Save the expensive query result to Redis for 10 minutes (600 seconds)
+            cache.set(cache_key, response.data, timeout=600)
+
             return response
 
         except Exception as e:
@@ -165,15 +203,31 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def checkout(self, request):
-        store_user = get_object_or_404(StoreUser,
-                                       original_user_id=request.user.id)
+        try:
+            store_user = StoreUser.objects.get(
+                original_user_id=request.user.id
+            )
+        except StoreUser.DoesNotExist:
+            return Response(
+                {"detail": "Store user not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         address_id = request.data.get('address_id')
         if not address_id:
             return Response({"detail": "Address ID is required."},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        address = get_object_or_404(Address, id=address_id, user=store_user)
+        try:
+            address = Address.objects.get(
+                id=address_id,
+                user_id=store_user.id
+            )
+        except Address.DoesNotExist:
+            return Response(
+                {"detail": "Address not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         # 1. Get Cart Items
         cart_items = Cart.objects.filter(user=store_user)
@@ -232,12 +286,11 @@ class CartViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Checkout successful."},
                             status=status.HTTP_201_CREATED)
 
-        except ValidationError as e:
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"detail": str(e)},
-                            status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class LikedProductViewSet(viewsets.ModelViewSet):
     serializer_class = LikedProductSerializer
@@ -257,6 +310,26 @@ class ProductReviewsViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
 
     http_method_names = ['get']
+
+    def list(self, request, *args, **kwargs):
+        # Get the product_id (default to 'all' if none is provided)
+        product_id = request.query_params.get('product_id', 'all')
+        query_string = request.META.get('QUERY_STRING', '')
+        
+        # Make the cache key specific to the product
+        cache_key = f"reviews_product_{product_id}_{query_string}"
+        
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response)
+
+        # If not cached, fetch from the database
+        response = super().list(request, *args, **kwargs)
+        
+        # Store in Redis for 15 minutes (900 seconds)
+        cache.set(cache_key, response.data, timeout=900)
+        
+        return response
 
     def get_queryset(self):
         product_id = self.request.query_params.get('product_id', None)
@@ -279,6 +352,24 @@ class EditReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Review.objects.filter(user_id=self.request.user.id)
+    
+    def clear_review_cache(self, product_id):
+        # Delete caches ONLY for this specific product
+        cache.delete_pattern(f"reviews_product_{product_id}_*")
+        cache.delete_pattern("reviews_product_all_*")
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        self.clear_review_cache(instance.product_id)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        self.clear_review_cache(instance.product_id)
+
+    def perform_destroy(self, instance):
+        product_id = instance.product_id
+        super().perform_destroy(instance)
+        self.clear_review_cache(product_id)
 
 
 class OrderViewSet(viewsets.ModelViewSet):

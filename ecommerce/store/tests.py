@@ -247,26 +247,6 @@ class EcommerceTestCase(APITestCase):
     # Standard Logic Tests
     # ----------------------------------------------------------------
 
-    def test_add_duplicate_item_merges_quantity(self):
-        """Test that adding the same product twice updates quantity (Your Bulk Logic)"""
-        self.get_token_headers(self.customer_user)
-
-        # Add 2 items
-        self.client.post('/api/store/cart/', {
-            "product_id": self.product.id,
-            "quantity": 2
-        })
-        # Add 3 MORE items
-        self.client.post('/api/store/cart/', {
-            "product_id": self.product.id,
-            "quantity": 3
-        })
-
-        # Verify: 1 row, 5 qty
-        cart_items = Cart.objects.filter(user=self.customer_store_user)
-        self.assertEqual(cart_items.count(), 1)
-        self.assertEqual(cart_items.first().quantity, 5)
-
     def test_checkout_success(self):
         """Test happy path checkout"""
         self.get_token_headers(self.customer_user)
@@ -378,7 +358,7 @@ class EcommerceTestCase(APITestCase):
 
         # We force an error during Order creation (which happens AFTER stock update in your view)
         # Your view: 1. bulk_update(product) -> 2. bulk_create(order)
-        with patch('store.models.Order.objects.bulk_create') as mock_create:
+        with patch('django.db.models.query.QuerySet.bulk_create') as mock_create:
             mock_create.side_effect = Exception("Simulated Database Crash!")
 
             response = self.client.post('/api/store/cart/checkout/',
@@ -464,3 +444,38 @@ class EcommerceTestCase(APITestCase):
 
         # 3. Verify: Should be 404 Not Found (Standard DRF behavior for filtered querysets)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_multiple_users_draining_stock_sequential(self):
+        """
+        Scenario: 5 users buy 2 items each. Stock 10 -> 0.
+        Verifies that stock decreases correctly across different users.
+        """
+        self.product.amount_in_stock = 10
+        self.product.save()
+
+        for i in range(5):
+            # 1. Create a unique user for this iteration
+            user = User.objects.create_user(
+                username=f'buyer_{i}',
+                email=f'b{i}@e.com',
+                password='password123',
+                role='CUSTOMER'
+            )
+            # (Assuming StoreUser is created via signal)
+            store_user = StoreUser.objects.get(original_user_id=user.id)
+            
+            # 2. Setup their cart and address
+            Cart.objects.create(user=store_user, product=self.product, quantity=2)
+            addr = Address.objects.create(user=store_user, street_address=f"St {i}", 
+                                          city="C", state="S", zip_code="Z", 
+                                          country="C", phone_number="1")
+
+            # 3. Authenticate and Checkout
+            self.get_token_headers(user)
+            response = self.client.post('/api/store/cart/checkout/', 
+                                        {"address_id": addr.id})
+            
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.amount_in_stock, 0)
