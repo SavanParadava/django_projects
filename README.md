@@ -130,12 +130,13 @@ python -m http.server 5500
 
 ------------------------------------------------------------------------
 
-# 📥 Load Sample Data (Optional)
 
-``` bash
-docker compose exec web python manage.py loaddata default_data.json
-docker compose exec web python manage.py loaddata store_data.json --database=store_db
-```
+# 🌱 Populate Database (Custom Command)
+
+To populate the store database with sample data, run:
+
+```bash
+docker compose exec web python manage.py populate_store
 
 ------------------------------------------------------------------------
 
