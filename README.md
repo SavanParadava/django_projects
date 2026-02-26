@@ -1,4 +1,4 @@
-# 🚀 Ecommerce Backend
+# 🚀 Ecommerce
 
 ### Django + DRF + Docker
 
@@ -56,7 +56,7 @@ architecture and scalable services.
 ## 1️⃣ Clone Repository
 
 ``` bash
-git clone https://github.com/yourusername/ecommerce.git
+git clone https://github.com/SavanParadava/django_projects.git
 cd ecommerce
 ```
 
@@ -114,6 +114,7 @@ docker compose exec web python manage.py createsuperuser
 
 ## 7️⃣ Start Frontend Server
 
+In ecommerce-frontend directory
 ``` bash
 python -m http.server 5500
 ```
