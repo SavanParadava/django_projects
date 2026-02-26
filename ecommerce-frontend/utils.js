@@ -1,4 +1,4 @@
-const API_BASE = 'https://savan99.pythonanywhere.com';
+const API_BASE = 'http://localhost:8000';
 
 // Helper to parse JWT tokens (to get role/user_id)
 function parseJwt(token) {
