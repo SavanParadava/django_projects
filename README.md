@@ -132,12 +132,13 @@ python -m http.server 5500
 ------------------------------------------------------------------------
 
 
-# 🌱 Populate Database (Custom Command)
+# 🌱 Populate Database
 
 To populate the store database with sample data, run:
 
 ```bash
 docker compose exec web python manage.py populate_store
+```
 
 ------------------------------------------------------------------------
 
