@@ -1,31 +1,43 @@
-# Ecommerce Backend (Django + DRF + Docker)
+# 🚀 Ecommerce Backend
 
-A production-ready ecommerce backend built with:
+### Django + DRF + Docker
 
--   Django & Django REST Framework
--   PostgreSQL (Multi-Database Setup)
--   Redis
--   Celery (Background Tasks + Celery Beat)
--   Docker & Docker Compose
--   Separate HTML / CSS / Vanilla JavaScript frontend
+A **production-ready ecommerce backend** built with modern backend
+architecture and scalable services.
 
-## Features
+------------------------------------------------------------------------
 
--   Custom User Model
--   Role-Based Access Control for Admin, Retailer, Customer
--   Multi-database architecture
--   Product & Category management
--   Cart & Orders system
--   Reviews system
--   dynamic filtering, search, pagination
--   custom middleware for rate-limiting and request validation
--   Redis caching
--   Celery background jobs like automatic product delisting
--   Periodic scheduled tasks (Celery Beat)
--   Django Admin
--   Fully Dockerized setup
+## 🛠 Tech Stack
 
-## Project Architecture
+-   🐍 **Django + Django REST Framework**
+-   🐘 **PostgreSQL (Multi-Database Setup)**
+-   ⚡ **Redis (Cache + Broker + Result Backend)**
+-   🔄 **Celery + Celery Beat (Background & Scheduled Tasks)**
+-   🐳 **Docker & Docker Compose**
+-   🌐 **HTML / CSS / Vanilla JavaScript Frontend**
+-   🔫 **Gunicorn**
+
+------------------------------------------------------------------------
+
+## ✨ Features
+
+-   👤 Custom User Model\
+-   🔐 Role-Based Access (Admin / Retailer / Customer)\
+-   🗄 Multi-database architecture\
+-   📦 Product & Category Management\
+-   🛒 Cart & Order System\
+-   ⭐ Reviews System\
+-   🔎 Dynamic Filtering, Search & Pagination\
+-   🛡 Custom Middleware (Rate Limiting + Validation)\
+-   ⚡ Redis Caching\
+-   🤖 Background Jobs (Automatic Product Delisting)\
+-   ⏰ Periodic Scheduled Tasks\
+-   🧑‍💼 Django Admin Panel\
+-   🐳 Fully Dockerized Setup
+
+------------------------------------------------------------------------
+
+## 🏗 Project Architecture
 
     Client (Frontend)
             ↓
@@ -37,31 +49,37 @@ A production-ready ecommerce backend built with:
             ↓
     Celery Worker + Celery Beat
 
-## Run With Docker
+------------------------------------------------------------------------
 
-### 1. Clone Repository
+# 🐳 Run With Docker
+
+## 1️⃣ Clone Repository
 
 ``` bash
 git clone https://github.com/yourusername/ecommerce.git
 cd ecommerce
 ```
 
-### 2. Setup Environment Variables
+## 2️⃣ Setup Environment Variables
 
 ``` bash
 cp .env.example .env
 ```
 
-Fill values inside `.env`.
+Fill the required values inside `.env`.
 
-### 3. Build & Start Containers
+------------------------------------------------------------------------
+
+## 3️⃣ Build & Start Containers
 
 ``` bash
 docker compose build
 docker compose up
 ```
 
-### 4. Create Databases (First Time Only)
+------------------------------------------------------------------------
+
+## 4️⃣ Create Databases (First Time Only)
 
 ``` bash
 docker compose exec db psql -U postgres
@@ -75,87 +93,98 @@ CREATE DATABASE ecommerce_store_db;
 \q
 ```
 
-### 5. Run Migrations
+------------------------------------------------------------------------
+
+## 5️⃣ Run Migrations
 
 ``` bash
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py migrate --database=store_db
 ```
 
-### 6. Create Superuser
+------------------------------------------------------------------------
+
+## 6️⃣ Create Superuser
 
 ``` bash
 docker compose exec web python manage.py createsuperuser
 ```
 
-### 7. Start Http Server
+------------------------------------------------------------------------
+
+## 7️⃣ Start Frontend Server
 
 ``` bash
 python -m http.server 5500
 ```
 
-### 8. Access Application
+------------------------------------------------------------------------
 
-Admin Panel:\
-http://localhost:8000/admin/
+## 🌐 Access Application
 
-API:\
-http://localhost:8000/api/
+  Service       URL
+  ------------- ------------------------------
+  Admin Panel   http://localhost:8000/admin/
+  API           http://localhost:8000/api/
+  Frontend      http://localhost:5500
 
-Frontend:\
-http://localhost:5500
+------------------------------------------------------------------------
 
-## Load Sample Data (Optional)
+# 📥 Load Sample Data (Optional)
 
 ``` bash
 docker compose exec web python manage.py loaddata default_data.json
 docker compose exec web python manage.py loaddata store_data.json --database=store_db
 ```
 
-## Reset Database (Development)
+------------------------------------------------------------------------
+
+# 🔄 Reset Database (Development)
 
 ``` bash
 docker compose down -v
 docker compose up
 ```
 
-## Celery Test Command
+------------------------------------------------------------------------
+
+# 🧪 Celery Test Command
 
 ``` bash
 docker compose exec web python manage.py shell
 ```
+
+Inside shell:
 
 ``` python
 from store.tasks import deactivate_unsold_products
 deactivate_unsold_products.delay()
 ```
 
-## Tech Stack
+------------------------------------------------------------------------
 
--   Backend: Django + DRF
--   Database: PostgreSQL
--   Cache: Redis
--   Background Jobs: Celery
--   Scheduler: Celery Beat
--   Server: Gunicorn
--   Containerization: Docker
+# 🧩 Services Overview
 
-## Services
+  Service       Description
+  ------------- -------------------
+  web           Django + Gunicorn
+  db            PostgreSQL
+  redis         Redis Server
+  celery        Celery Worker
+  celery-beat   Scheduled Tasks
 
--   web --- Django + Gunicorn
--   db --- PostgreSQL
--   redis --- Redis server
--   celery --- Celery worker
--   celery-beat --- Scheduled tasks
+------------------------------------------------------------------------
 
-## Security Notes
+# 🔐 Security Notes
 
--   Do not expose `.env`
--   Rotate `SECRET_KEY` in production
--   Disable `DEBUG` in production
--   Use strong database passwords
+-   ❌ Do NOT expose `.env`
+-   🔑 Rotate `SECRET_KEY` in production
+-   🛑 Disable `DEBUG` in production
+-   🔒 Use strong database passwords
 
-## Development Notes
+------------------------------------------------------------------------
+
+# 🧑‍💻 Development Notes
 
 Restart Celery after modifying tasks:
 
@@ -169,6 +198,8 @@ Rebuild only if `requirements.txt` changes:
 docker compose build --no-cache
 ```
 
-## Author
+------------------------------------------------------------------------
 
-Savan Paradava
+# 👨‍💻 Author
+
+**Savan Paradava**
