@@ -9,13 +9,13 @@ architecture and scalable services.
 
 ## 🛠 Tech Stack
 
--   🐍 **Django + Django REST Framework**
--   🐘 **PostgreSQL (Multi-Database Setup)**
--   ⚡ **Redis (Cache + Broker + Result Backend)**
--   🔄 **Celery + Celery Beat (Background & Scheduled Tasks)**
--   🐳 **Docker & Docker Compose**
--   🌐 **HTML / CSS / Vanilla JavaScript Frontend**
--   🔫 **Gunicorn**
+-   🐍 Django + Django REST Framework
+-   🐘 PostgreSQL (Multi-Database Setup)
+-   ⚡ Redis (Cache + Broker + Result Backend)
+-   🔄 Celery + Celery Beat (Background & Scheduled Tasks)
+-   🐳 Docker & Docker Compose
+-   🌐 HTML / CSS / Vanilla JavaScript Frontend
+-   🔫 Gunicorn
 
 ------------------------------------------------------------------------
 
@@ -122,11 +122,11 @@ python -m http.server 5500
 
 ## 🌐 Access Application
 
-  Service       URL
-  ------------- ------------------------------
--   Admin Panel   http://localhost:8000/admin/
--   API           http://localhost:8000/api/
--   Frontend      http://localhost:5500
+| Service     | URL                                                          |
+| ----------- | ------------------------------------------------------------ |
+| Admin Panel | [http://localhost:8000/admin/](http://localhost:8000/admin/) |
+| API         | [http://localhost:8000/api/](http://localhost:8000/api/)     |
+| Frontend    | [http://localhost:5500](http://localhost:5500)               |
 
 ------------------------------------------------------------------------
 
@@ -165,13 +165,14 @@ deactivate_unsold_products.delay()
 
 # 🧩 Services Overview
 
-  Service       Description
-  ------------- -------------------
--   web           Django + Gunicorn
--   db            PostgreSQL
--   redis         Redis Server
--   celery        Celery Worker
--   celery-beat   Scheduled Tasks
+| Service     | Description       |
+| ----------- | ----------------- |
+| web         | Django + Gunicorn |
+| db          | PostgreSQL        |
+| redis       | Redis Server      |
+| celery      | Celery Worker     |
+| celery-beat | Scheduled Tasks   |
+
 
 ------------------------------------------------------------------------
 
