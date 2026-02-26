@@ -12,12 +12,15 @@ A production-ready ecommerce backend built with:
 ## Features
 
 -   Custom User Model
+-   Role-Based Access Control for Admin, Retailer, Customer
 -   Multi-database architecture
 -   Product & Category management
 -   Cart & Orders system
 -   Reviews system
+-   dynamic filtering, search, pagination
+-   custom middleware for rate-limiting and request validation
 -   Redis caching
--   Celery background jobs
+-   Celery background jobs like automatic product delisting
 -   Periodic scheduled tasks (Celery Beat)
 -   Django Admin
 -   Fully Dockerized setup
@@ -85,13 +88,22 @@ docker compose exec web python manage.py migrate --database=store_db
 docker compose exec web python manage.py createsuperuser
 ```
 
-### 7. Access Application
+### 7. Start Http Server
+
+``` bash
+python -m http.server 5500
+```
+
+### 8. Access Application
 
 Admin Panel:\
 http://localhost:8000/admin/
 
 API:\
 http://localhost:8000/api/
+
+Frontend:\
+http://localhost:5500
 
 ## Load Sample Data (Optional)
 
@@ -106,26 +118,6 @@ docker compose exec web python manage.py loaddata store_data.json --database=sto
 docker compose down -v
 docker compose up
 ```
-
-## Environment Variables (.env.example)
-
-``` env
-DEBUG=True
-SECRET_KEY=change-me
-
-POSTGRES_DB_USERS=
-POSTGRES_DB_STORE=
-POSTGRES_USER=
-POSTGRES_PASSWORD=
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-
-REDIS_URL=redis://redis:6379/1
-CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/2
-```
-
-Never commit your real `.env` file.
 
 ## Celery Test Command
 
