@@ -221,7 +221,7 @@ class CartViewSet(viewsets.ModelViewSet):
         try:
             address = Address.objects.get(
                 id=address_id,
-                user_id=store_user.id
+                user_id=store_user.original_user_id
             )
         except Address.DoesNotExist:
             return Response(

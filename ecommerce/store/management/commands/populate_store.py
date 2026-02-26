@@ -416,7 +416,7 @@ def populate_data(command_instance):
     print("Creating Retailers...")
     for email in RETAILER_EMAILS:
         if not User.objects.filter(email=email).exists():
-            u = User(email=email, role='RETAILER', is_verified=True)
+            u = User(username=email.split("@", 1)[0], email=email, role='RETAILER', is_verified=True)
             u.set_password('password123')
             u.save() # Triggers signal for StoreUser
             print(f"  - Created retailer: {email}")
@@ -436,7 +436,7 @@ def populate_data(command_instance):
         
         for item in items:
             # Check if product already exists to avoid duplicates on re-run
-            if not Product.objects.filter(name=item['name']).exists():
+            if not Product.objects.filter(name=item['name'], is_active=True).exists():
                 products_to_create.append(Product(
                     name=item['name'],
                     price=item['price'],

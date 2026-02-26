@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def deactivate_unsold_products():
-    deadline = timezone.now() - timedelta(days=10)
+    deadline = timezone.now() - timedelta(days=60)
     
     unsold_products = Product.objects.filter(
         is_active=True,
