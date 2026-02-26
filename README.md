@@ -21,18 +21,18 @@ architecture and scalable services.
 
 ## ✨ Features
 
--   👤 Custom User Model\
--   🔐 Role-Based Access (Admin / Retailer / Customer)\
--   🗄 Multi-database architecture\
--   📦 Product & Category Management\
--   🛒 Cart & Order System\
--   ⭐ Reviews System\
--   🔎 Dynamic Filtering, Search & Pagination\
--   🛡 Custom Middleware (Rate Limiting + Validation)\
--   ⚡ Redis Caching\
--   🤖 Background Jobs (Automatic Product Delisting)\
--   ⏰ Periodic Scheduled Tasks\
--   🧑‍💼 Django Admin Panel\
+-   👤 Custom User Model
+-   🔐 Role-Based Access (Admin / Retailer / Customer)
+-   🗄 Multi-database architecture
+-   📦 Product & Category Management
+-   🛒 Cart & Order System
+-   ⭐ Reviews System
+-   🔎 Dynamic Filtering, Search & Pagination
+-   🛡 Custom Middleware (Rate Limiting + Validation)
+-   ⚡ Redis Caching
+-   🤖 Background Jobs (Automatic Product Delisting)
+-   ⏰ Periodic Scheduled Tasks
+-   🧑‍💼 Django Admin Panel
 -   🐳 Fully Dockerized Setup
 
 ------------------------------------------------------------------------
