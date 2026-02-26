@@ -124,9 +124,9 @@ python -m http.server 5500
 
   Service       URL
   ------------- ------------------------------
-  Admin Panel   http://localhost:8000/admin/
-  API           http://localhost:8000/api/
-  Frontend      http://localhost:5500
+-   Admin Panel   http://localhost:8000/admin/
+-   API           http://localhost:8000/api/
+-   Frontend      http://localhost:5500
 
 ------------------------------------------------------------------------
 
@@ -167,11 +167,11 @@ deactivate_unsold_products.delay()
 
   Service       Description
   ------------- -------------------
-  web           Django + Gunicorn
-  db            PostgreSQL
-  redis         Redis Server
-  celery        Celery Worker
-  celery-beat   Scheduled Tasks
+-   web           Django + Gunicorn
+-   db            PostgreSQL
+-   redis         Redis Server
+-   celery        Celery Worker
+-   celery-beat   Scheduled Tasks
 
 ------------------------------------------------------------------------
 
